@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import axios from 'axios';
+import { toast } from 'vue3-toastify';
 
 const props = defineProps<{
-  professional: any; // Usando any para mayor flexibilidad
+  professional: any;
 }>();
 
 const emit = defineEmits<{
@@ -11,34 +12,63 @@ const emit = defineEmits<{
   save: [data: any];
 }>();
 
-// Estados del formulario con manejo mejorado de datos
+// Estados del formulario basados en la estructura real de datos
 const formData = ref({
   id: props.professional.id,
-  names: props.professional.names || '',
+  names: props.professional.names || props.professional.name || '',
   lastnames: props.professional.lastnames || '',
   email: props.professional.email || '',
-  document: props.professional.document || props.professional.cedula || '',
-  phone: props.professional.phone || props.professional.cellphone || props.professional.telefono || '',
-  experience: props.professional.experience || props.professional.years_experience || 0,
-  perfilPhoto: props.professional.perfilPhoto || props.professional.profilePhoto || props.professional.profile_photo || props.professional.photo || null,
-  specialties: props.professional.specialties || props.professional.especialidades || [],
-  offices: props.professional.offices || props.professional.consultorios || [],
-  prepaidMedicine: props.professional.prepaidMedicine || props.professional.prepaid_medicine || []
+  document: props.professional.document || '',
+  phone: props.professional.phone || '',
+  experience: props.professional.experience || 0,
+  perfilPhoto: props.professional.perfilPhoto || '', // Campo correcto de la BD
+  title: props.professional.title || '',
+  description: props.professional.description || '',
+  specialists: props.professional.specialists || [],
+  offices: props.professional.offices || [],
+  prepagadas: props.professional.prepagadas || [],
+  web: props.professional.web || '',
+  facebook: props.professional.facebook || '',
+  instagram: props.professional.instagram || '',
+  linkedin: props.professional.linkedin || '',
+  youtube: props.professional.youtube || '',
+  type_of_payment: props.professional.type_of_payment || 'CLINIC',
+  actions: props.professional.actions || []
 });
 
 // Estados para campos de acción
 const newSpecialty = ref('');
 const selectedPrepaid = ref('');
+const loadingImage = ref(false);
 
-// Foto de perfil - CORREGIDO: buscar primero perfilPhoto
-const profileImageUrl = ref(
-  props.professional.perfilPhoto ||  // Campo correcto de la BD
-  props.professional.profilePhoto || 
-  props.professional.profile_photo || 
-  props.professional.photo || 
-  props.professional.image || 
-  ''
-);
+// URL de la imagen con fallback correcto
+const profileImageUrl = computed(() => {
+  const url = formData.value.perfilPhoto || props.professional.perfilPhoto;
+  
+  if (!url || url === '') {
+    return 'https://res.cloudinary.com/dirsusbyy/image/upload/v1742425056/fidungtrcbetkco1tqqz.png';
+  }
+  
+  // Si la URL es relativa, añadir el dominio base si es necesario
+  if (url.startsWith('/')) {
+    return window.location.origin + url;
+  }
+  
+  return url;
+});
+
+// Imagen temporal para preview
+const tempImageUrl = ref('');
+
+onMounted(() => {
+  // Inicializar la imagen temporal con la URL actual
+  tempImageUrl.value = profileImageUrl.value;
+  
+  // Log para debug
+  console.log('Professional data:', props.professional);
+  console.log('perfilPhoto field:', props.professional.perfilPhoto);
+  console.log('Image URL:', profileImageUrl.value);
+});
 
 // Opciones de prepagadas
 const prepaidOptions = [
@@ -57,73 +87,126 @@ async function handleFileUpload(event: Event) {
   const target = event.target as HTMLInputElement;
   const file = target.files?.[0];
   
-  if (file) {
-    // Opción 1: Subir al servidor (USANDO EL ENDPOINT CORRECTO)
-    try {
-      const formDataUpload = new FormData();
-      formDataUpload.append('file', file);
-      
-      const response = await axios.post('/files/upload', formDataUpload, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
-      
-      if (response.data.url) {
-        profileImageUrl.value = response.data.url;
-        formData.value.perfilPhoto = response.data.url;
+  if (!file) return;
+  
+  // Validar tamaño del archivo (máximo 5MB)
+  if (file.size > 5 * 1024 * 1024) {
+    toast.error('La imagen no debe superar los 5MB');
+    return;
+  }
+  
+  // Validar tipo de archivo
+  const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+  if (!validTypes.includes(file.type)) {
+    toast.error('Solo se permiten imágenes JPG, PNG o WEBP');
+    return;
+  }
+  
+  loadingImage.value = true;
+  
+  try {
+    const formDataUpload = new FormData();
+    formDataUpload.append('file', file);
+    
+    // Subir imagen al servidor usando el endpoint correcto del repositorio
+    const response = await axios.post('/files/upload', formDataUpload, {
+      headers: { 
+        'Content-Type': 'multipart/form-data' 
       }
-    } catch (error) {
-      console.error('Error al subir imagen:', error);
-      // Fallback: usar FileReader para preview local
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        profileImageUrl.value = e.target?.result as string;
-        formData.value.perfilPhoto = e.target?.result as string;
-      };
-      reader.readAsDataURL(file);
+    });
+    
+    if (response.data.url) {
+      // Actualizar la URL de la imagen
+      tempImageUrl.value = response.data.url;
+      formData.value.perfilPhoto = response.data.url;
+      
+      toast.success('Imagen cargada correctamente');
+    } else {
+      throw new Error('No se recibió URL de la imagen');
     }
+    
+  } catch (error) {
+    console.error('Error al cargar la imagen:', error);
+    toast.error('Error al cargar la imagen. Por favor, intente nuevamente.');
+    
+    // Fallback: usar FileReader para preview local
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const result = e.target?.result as string;
+      tempImageUrl.value = result;
+      // No actualizamos formData.perfilPhoto porque no se subió al servidor
+    };
+    reader.readAsDataURL(file);
+  } finally {
+    loadingImage.value = false;
   }
 }
 
 function addSpecialty() {
   if (newSpecialty.value.trim()) {
-    if (!formData.value.specialties) {
-      formData.value.specialties = [];
+    if (!formData.value.specialists) {
+      formData.value.specialists = [];
     }
-    formData.value.specialties.push(newSpecialty.value.trim());
-    newSpecialty.value = '';
+    
+    // Verificar si ya existe
+    const exists = formData.value.specialists.some(
+      s => s.name?.toLowerCase() === newSpecialty.value.trim().toLowerCase()
+    );
+    
+    if (!exists) {
+      formData.value.specialists.push({
+        id: Date.now().toString(),
+        name: newSpecialty.value.trim(),
+        status: 'ACTIVE'
+      });
+      newSpecialty.value = '';
+    } else {
+      toast.warning('Esta especialidad ya fue agregada');
+    }
   }
 }
 
 function removeSpecialty(index: number) {
-  formData.value.specialties?.splice(index, 1);
+  formData.value.specialists?.splice(index, 1);
 }
 
 function addPrepaid() {
-  if (selectedPrepaid.value && !formData.value.prepaidMedicine?.includes(selectedPrepaid.value)) {
-    if (!formData.value.prepaidMedicine) {
-      formData.value.prepaidMedicine = [];
-    }
-    formData.value.prepaidMedicine.push(selectedPrepaid.value);
+  if (!selectedPrepaid.value) return;
+  
+  if (!formData.value.prepagadas) {
+    formData.value.prepagadas = [];
+  }
+  
+  const exists = formData.value.prepagadas.some(
+    p => p.name === selectedPrepaid.value
+  );
+  
+  if (!exists) {
+    formData.value.prepagadas.push({
+      id: Date.now().toString(),
+      name: selectedPrepaid.value,
+      status: 'ACTIVE',
+      type: 'SITE'
+    });
     selectedPrepaid.value = '';
   }
 }
 
-function removePrepaid(prepaid: string) {
-  const index = formData.value.prepaidMedicine?.indexOf(prepaid);
-  if (index !== undefined && index > -1) {
-    formData.value.prepaidMedicine?.splice(index, 1);
-  }
+function removePrepaid(index: number) {
+  formData.value.prepagadas?.splice(index, 1);
 }
 
 function addOffice() {
-  // Lógica para agregar consultorio
   if (!formData.value.offices) {
     formData.value.offices = [];
   }
+  
   formData.value.offices.push({
-    id: Date.now(),
+    id: Date.now().toString(),
     description: 'Nuevo Consultorio',
-    address: 'Cl. 140 #10 A 61, Bogotá, Colombia'
+    address: 'Cl. 140 #10 A 61, Bogotá, Colombia',
+    latitude: 4.7110,
+    longitude: -74.0721
   });
 }
 
@@ -136,13 +219,22 @@ function downloadPDF() {
   window.open('/api/professionals/pdf/' + props.professional.id, '_blank');
 }
 
-function saveChanges() {
-  // Asegurar que se envíe el campo correcto
-  const dataToSave = {
-    ...formData.value,
-    perfilPhoto: formData.value.perfilPhoto || profileImageUrl.value
-  };
-  emit('save', dataToSave);
+async function saveChanges() {
+  try {
+    // Preparar datos para guardar
+    const dataToSave = {
+      ...formData.value,
+      perfilPhoto: formData.value.perfilPhoto || tempImageUrl.value
+    };
+    
+    // Emitir evento con los datos actualizados
+    emit('save', dataToSave);
+    
+    toast.success('Cambios guardados correctamente');
+  } catch (error) {
+    console.error('Error al guardar:', error);
+    toast.error('Error al guardar los cambios');
+  }
 }
 
 function close() {
@@ -151,8 +243,10 @@ function close() {
 
 // Función para manejar error de carga de imagen
 function handleImageError(event: Event) {
-  const img = event.target as HTMLImageElement;
-  img.src = 'https://res.cloudinary.com/dirsusbyy/image/upload/v1742425056/fidungtrcbetkco1tqqz.png';
+  const target = event.target as HTMLImageElement;
+  console.error('Error al cargar imagen desde:', target.src);
+  // Usar imagen por defecto
+  target.src = 'https://res.cloudinary.com/dirsusbyy/image/upload/v1742425056/fidungtrcbetkco1tqqz.png';
 }
 </script>
 
@@ -211,6 +305,7 @@ function handleImageError(event: Event) {
               v-model="formData.email"
               type="email" 
               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+              readonly
             >
           </div>
           
@@ -221,7 +316,6 @@ function handleImageError(event: Event) {
               v-model="formData.document"
               type="text" 
               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-              :placeholder="!formData.document ? '93386028' : ''"
             >
           </div>
           
@@ -232,31 +326,43 @@ function handleImageError(event: Event) {
               v-model="formData.phone"
               type="text" 
               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-              :placeholder="!formData.phone ? '3123456789' : ''"
             >
           </div>
           
-          <!-- Foto de Perfil - SECCIÓN CORREGIDA -->
+          <!-- Foto de Perfil - MEJORADA CON ENDPOINT CORRECTO -->
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Foto de Perfil</label>
             <div class="flex items-center gap-4">
-              <div class="w-24 h-24 rounded-full overflow-hidden bg-gray-100">
-                <img 
-                  :src="profileImageUrl || 'https://res.cloudinary.com/dirsusbyy/image/upload/v1742425056/fidungtrcbetkco1tqqz.png'" 
-                  alt="Perfil"
-                  class="w-full h-full object-cover"
-                  @error="handleImageError"
-                >
+              <!-- Contenedor de la imagen -->
+              <div class="relative">
+                <div class="w-24 h-24 rounded-full overflow-hidden bg-gray-100 border-2 border-[var(--blue-1)]">
+                  <img 
+                    :src="tempImageUrl || profileImageUrl" 
+                    alt="Foto de perfil"
+                    class="w-full h-full object-cover"
+                    @error="handleImageError"
+                  >
+                </div>
+                <!-- Indicador de carga -->
+                <div v-if="loadingImage" class="absolute inset-0 bg-black bg-opacity-50 rounded-full flex items-center justify-center">
+                  <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
+                </div>
               </div>
-              <label class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg cursor-pointer transition-colors">
-                Añadir Foto
-                <input 
-                  type="file" 
-                  accept="image/*"
-                  class="hidden"
-                  @change="handleFileUpload"
-                >
-              </label>
+              
+              <!-- Botón de carga -->
+              <div class="flex flex-col gap-2">
+                <label class="bg-[var(--blue-1)] hover:bg-blue-600 text-white px-4 py-2 rounded-lg cursor-pointer transition-colors text-center">
+                  {{ loadingImage ? 'Cargando...' : 'Cambiar Foto' }}
+                  <input 
+                    type="file" 
+                    accept="image/jpeg,image/jpg,image/png,image/webp"
+                    class="hidden"
+                    @change="handleFileUpload"
+                    :disabled="loadingImage"
+                  >
+                </label>
+                <span class="text-xs text-gray-500">JPG, PNG o WEBP (Max. 5MB)</span>
+              </div>
             </div>
           </div>
         </div>
@@ -274,34 +380,44 @@ function handleImageError(event: Event) {
             >
           </div>
           
-          <!-- Principales campos de acción -->
+          <!-- Descripción -->
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Principales campos de acción</label>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
+            <textarea 
+              v-model="formData.description"
+              rows="3"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+              placeholder="Describe tu experiencia y especialidades..."
+            ></textarea>
+          </div>
+          
+          <!-- Especialidades -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Especialidades</label>
             <div class="flex gap-2">
               <input 
                 v-model="newSpecialty"
                 type="text" 
-                placeholder="Escribe una acción..."
+                placeholder="Agregar especialidad..."
                 class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
                 @keyup.enter="addSpecialty"
               >
               <button 
                 @click="addSpecialty"
-                class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors"
+                class="bg-[var(--blue-1)] hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors"
               >
                 Agregar
               </button>
             </div>
             
-            <!-- Lista de especialidades con opción de eliminar -->
+            <!-- Lista de especialidades -->
             <div class="mt-2 space-y-1">
-              <!-- Especialidades agregadas dinámicamente -->
               <div 
-                v-for="(specialty, index) in formData.specialties" 
-                :key="'new-' + index"
+                v-for="(specialty, index) in formData.specialists" 
+                :key="specialty.id || index"
                 class="flex items-center justify-between bg-gray-100 px-3 py-2 rounded-lg"
               >
-                <span class="text-sm">{{ specialty }}</span>
+                <span class="text-sm">{{ specialty.name || specialty }}</span>
                 <button 
                   @click="removeSpecialty(index)"
                   class="text-red-500 hover:text-red-700"
@@ -311,59 +427,34 @@ function handleImageError(event: Event) {
                   </svg>
                 </button>
               </div>
-              
-              <!-- Si no hay especialidades, mostrar las por defecto con opción de eliminar -->
-              <div v-if="formData.specialties.length === 0" class="space-y-1">
-                <div class="flex items-center justify-between bg-gray-100 px-3 py-2 rounded-lg">
-                  <span class="text-sm">Retina</span>
-                  <button class="text-red-500 hover:text-red-700">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                    </svg>
-                  </button>
-                </div>
-                <div class="flex items-center justify-between bg-gray-100 px-3 py-2 rounded-lg">
-                  <span class="text-sm">Glaucoma</span>
-                  <button class="text-red-500 hover:text-red-700">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                    </svg>
-                  </button>
-                </div>
-              </div>
             </div>
           </div>
           
           <!-- Ubicación Consultorio -->
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Ubicación Consultorio</label>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Consultorios</label>
             <button 
               @click="addOffice"
-              class="w-full bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors"
+              class="w-full bg-[var(--blue-1)] hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors"
             >
-              Nuevo consultorio
+              Agregar consultorio
             </button>
             
             <!-- Lista de consultorios -->
             <div class="mt-2 space-y-2">
               <div 
                 v-for="(office, index) in formData.offices" 
-                :key="index"
+                :key="office.id || index"
                 class="bg-gray-100 p-3 rounded-lg"
               >
-                <p class="text-sm font-medium">{{ office.description }}</p>
-                <p class="text-xs text-gray-600">{{ office.address }}</p>
+                <p class="text-sm font-medium">{{ office.description || `Consultorio ${index + 1}` }}</p>
+                <p class="text-xs text-gray-600">{{ office.address || 'Dirección no especificada' }}</p>
                 <button 
                   @click="removeOffice(index)"
                   class="text-red-500 hover:text-red-700 text-xs mt-1"
                 >
                   Eliminar
                 </button>
-              </div>
-              <!-- Mostrar consultorio por defecto si no hay ninguno -->
-              <div v-if="formData.offices.length === 0" class="bg-gray-100 p-3 rounded-lg">
-                <p class="text-sm font-medium">Cedritos</p>
-                <p class="text-xs text-gray-600">Cl. 140 #10 A 61, Bogotá, Colombia</p>
               </div>
             </div>
           </div>
@@ -381,7 +472,6 @@ function handleImageError(event: Event) {
                 v-for="option in prepaidOptions" 
                 :key="option"
                 :value="option"
-                :disabled="formData.prepaidMedicine?.includes(option)"
               >
                 {{ option }}
               </option>
@@ -390,34 +480,19 @@ function handleImageError(event: Event) {
             <!-- Lista de prepagadas seleccionadas -->
             <div class="mt-2 flex flex-wrap gap-2">
               <div 
-                v-for="prepaid in formData.prepaidMedicine" 
-                :key="prepaid"
-                class="bg-blue-500 text-white px-3 py-1 rounded-full flex items-center gap-2"
+                v-for="(prepaid, index) in formData.prepagadas" 
+                :key="prepaid.id || index"
+                class="bg-[var(--blue-1)] text-white px-3 py-1 rounded-full flex items-center gap-2"
               >
-                <span class="text-sm">{{ prepaid }}</span>
+                <span class="text-sm">{{ prepaid.name || prepaid }}</span>
                 <button 
-                  @click="removePrepaid(prepaid)"
+                  @click="removePrepaid(index)"
                   class="text-white hover:text-red-200"
                 >
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                   </svg>
                 </button>
-              </div>
-              <!-- Mostrar prepagadas por defecto -->
-              <div v-if="formData.prepaidMedicine.length === 0" class="flex flex-wrap gap-2">
-                <div class="bg-blue-500 text-white px-3 py-1 rounded-full flex items-center gap-2">
-                  <span class="text-sm">Axa Colpatria</span>
-                  <span class="text-white">✕</span>
-                </div>
-                <div class="bg-blue-500 text-white px-3 py-1 rounded-full flex items-center gap-2">
-                  <span class="text-sm">Compensar</span>
-                  <span class="text-white">✕</span>
-                </div>
-                <div class="bg-blue-500 text-white px-3 py-1 rounded-full flex items-center gap-2">
-                  <span class="text-sm">Seguros Bolivar</span>
-                  <span class="text-white">✕</span>
-                </div>
               </div>
             </div>
           </div>
@@ -435,10 +510,25 @@ function handleImageError(event: Event) {
       </button>
       <button 
         @click="saveChanges"
-        class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors"
+        class="bg-[var(--blue-1)] hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors"
+        :disabled="loadingImage"
       >
         Guardar Cambios
       </button>
     </div>
   </div>
 </template>
+
+<style scoped>
+/* Asegurar que la imagen se muestre correctamente */
+img {
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+}
+
+/* Estilo para el botón deshabilitado */
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+</style>
