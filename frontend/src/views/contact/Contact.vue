@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import Navbar from '@/Modules/Home/Navbar.vue';
 import Footer from '@/Modules/Home/Footer.vue';
+import Footer_Color from '@/common/Footer_Color.vue';
 import { ref, onMounted } from 'vue';
 import axios from 'axios';
 import Swal from "sweetalert2";
@@ -133,8 +134,8 @@ async function sendContact() {
                 </div>
             </div>
         </div>
-        
-        <div class="w-[85%] mx-auto lg:w-full ">
+    </div>  
+    <div class="w-[85%] mx-auto lg:w-full ">
         <Footer />
     </div>
     <Footer_Color color="#f3f4f6" />
@@ -144,6 +145,5 @@ async function sendContact() {
             <img src="@/assets/images/logowhatsaap.webp" alt="WhatsApp" class="w-16 h-16 object-contain" />
         </a>
 
-    </div>
     </div>
 </template>
