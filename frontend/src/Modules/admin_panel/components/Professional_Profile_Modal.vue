@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue';
+import axios from 'axios';
 
 const props = defineProps<{
   professional: any; // Usando any para mayor flexibilidad
@@ -19,7 +20,7 @@ const formData = ref({
   document: props.professional.document || props.professional.cedula || '',
   phone: props.professional.phone || props.professional.cellphone || props.professional.telefono || '',
   experience: props.professional.experience || props.professional.years_experience || 0,
-  profilePhoto: props.professional.profilePhoto || props.professional.profile_photo || props.professional.photo || null,
+  perfilPhoto: props.professional.perfilPhoto || props.professional.profilePhoto || props.professional.profile_photo || props.professional.photo || null,
   specialties: props.professional.specialties || props.professional.especialidades || [],
   offices: props.professional.offices || props.professional.consultorios || [],
   prepaidMedicine: props.professional.prepaidMedicine || props.professional.prepaid_medicine || []
@@ -29,8 +30,9 @@ const formData = ref({
 const newSpecialty = ref('');
 const selectedPrepaid = ref('');
 
-// Foto de perfil - manejar diferentes posibles campos
+// Foto de perfil - CORREGIDO: buscar primero perfilPhoto
 const profileImageUrl = ref(
+  props.professional.perfilPhoto ||  // Campo correcto de la BD
   props.professional.profilePhoto || 
   props.professional.profile_photo || 
   props.professional.photo || 
@@ -51,17 +53,34 @@ const prepaidOptions = [
 ];
 
 // Métodos
-function handleFileUpload(event: Event) {
+async function handleFileUpload(event: Event) {
   const target = event.target as HTMLInputElement;
   const file = target.files?.[0];
   
   if (file) {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      profileImageUrl.value = e.target?.result as string;
-      formData.value.profilePhoto = e.target?.result as string;
-    };
-    reader.readAsDataURL(file);
+    // Opción 1: Subir al servidor (USANDO EL ENDPOINT CORRECTO)
+    try {
+      const formDataUpload = new FormData();
+      formDataUpload.append('file', file);
+      
+      const response = await axios.post('/files/upload', formDataUpload, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      
+      if (response.data.url) {
+        profileImageUrl.value = response.data.url;
+        formData.value.perfilPhoto = response.data.url;
+      }
+    } catch (error) {
+      console.error('Error al subir imagen:', error);
+      // Fallback: usar FileReader para preview local
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        profileImageUrl.value = e.target?.result as string;
+        formData.value.perfilPhoto = e.target?.result as string;
+      };
+      reader.readAsDataURL(file);
+    }
   }
 }
 
@@ -118,11 +137,22 @@ function downloadPDF() {
 }
 
 function saveChanges() {
-  emit('save', formData.value);
+  // Asegurar que se envíe el campo correcto
+  const dataToSave = {
+    ...formData.value,
+    perfilPhoto: formData.value.perfilPhoto || profileImageUrl.value
+  };
+  emit('save', dataToSave);
 }
 
 function close() {
   emit('close');
+}
+
+// Función para manejar error de carga de imagen
+function handleImageError(event: Event) {
+  const img = event.target as HTMLImageElement;
+  img.src = 'https://res.cloudinary.com/dirsusbyy/image/upload/v1742425056/fidungtrcbetkco1tqqz.png';
 }
 </script>
 
@@ -206,15 +236,16 @@ function close() {
             >
           </div>
           
-          <!-- Foto de Perfil -->
+          <!-- Foto de Perfil - SECCIÓN CORREGIDA -->
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Foto de Perfil</label>
             <div class="flex items-center gap-4">
               <div class="w-24 h-24 rounded-full overflow-hidden bg-gray-100">
                 <img 
-                  :src="profileImageUrl || '/src/assets/images/notUser.webp'" 
+                  :src="profileImageUrl || 'https://res.cloudinary.com/dirsusbyy/image/upload/v1742425056/fidungtrcbetkco1tqqz.png'" 
                   alt="Perfil"
                   class="w-full h-full object-cover"
+                  @error="handleImageError"
                 >
               </div>
               <label class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg cursor-pointer transition-colors">

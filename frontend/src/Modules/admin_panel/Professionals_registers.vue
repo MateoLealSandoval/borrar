@@ -216,7 +216,7 @@ function changePage(page: number) {
 <template>
   <div class="w-full bg-gray-50 min-h-screen">
     <!-- Header con título y acciones -->
-    <div class="bg-white px-6 py-4 border-b border-gray-200">
+    <div class="px-6 py-4 border-b border-gray-200">
       <div class="flex justify-between items-center">
         <h1 class="text-lg text-gray-700">Bienvenido a Doc Visual Administrador</h1>
         <div class="flex gap-4 items-center">
