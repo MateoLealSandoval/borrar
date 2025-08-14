@@ -1,10 +1,25 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
-import type { user_professional_dto } from '@/dto/professional';
+import type { UsersProfessionalsPanelAdminDto } from '@/dto/AdminPanel';
 
-// Props con tipo correcto
+// Props - Ahora acepta tanto user_professional_dto como UsersProfessionalsPanelAdminDto
+interface ProfessionalData {
+  id?: string;
+  name?: string;
+  names?: string | number;
+  lastnames?: string | number;
+  email?: string | number;
+  document?: string;
+  phone?: string;
+  experience?: number;
+  description?: string;
+  perfilPhoto?: string;
+  prepaidMedicine?: any[];
+  prepagadas?: any[];
+}
+
 const props = defineProps<{
-  professional: user_professional_dto | null;
+  professional: ProfessionalData | null;
   showModal: boolean;
 }>();
 
@@ -14,18 +29,24 @@ const emit = defineEmits<{
   save: [data: any];
 }>();
 
-// Estado del formulario
+// Helper para convertir valores que pueden ser números a string
+const toString = (value: string | number | undefined): string => {
+  if (value === undefined || value === null) return '';
+  return typeof value === 'number' ? value.toString() : value;
+};
+
+// Estado del formulario con conversión de tipos
 const formData = ref({
   id: props.professional?.id || '',
-  names: props.professional?.names || '',
-  lastnames: props.professional?.lastnames || '',
-  email: props.professional?.email || '',
+  names: toString(props.professional?.names),
+  lastnames: toString(props.professional?.lastnames),
+  email: toString(props.professional?.email),
   document: props.professional?.document || '',
   phone: props.professional?.phone || '',
   experience: props.professional?.experience || 0,
   description: props.professional?.description || '',
   perfilPhoto: props.professional?.perfilPhoto || '',
-  prepaidMedicine: props.professional?.prepaidMedicine || []
+  prepaidMedicine: props.professional?.prepaidMedicine || props.professional?.prepagadas || []
 });
 
 // Estado para manejo de errores de imagen
@@ -40,20 +61,30 @@ const imageUrl = computed(() => {
   return formData.value.perfilPhoto;
 });
 
+// Computed para el nombre completo para mostrar
+const fullName = computed(() => {
+  const names = toString(props.professional?.names);
+  const lastnames = toString(props.professional?.lastnames);
+  if (names && lastnames) {
+    return `${names} ${lastnames}`;
+  }
+  return props.professional?.name || 'Sin nombre';
+});
+
 // Watchers para actualizar el formulario cuando cambian las props
 watch(() => props.professional, (newVal) => {
   if (newVal) {
     formData.value = {
       id: newVal.id || '',
-      names: newVal.names || '',
-      lastnames: newVal.lastnames || '',
-      email: newVal.email || '',
+      names: toString(newVal.names),
+      lastnames: toString(newVal.lastnames),
+      email: toString(newVal.email),
       document: newVal.document || '',
       phone: newVal.phone || '',
       experience: newVal.experience || 0,
       description: newVal.description || '',
       perfilPhoto: newVal.perfilPhoto || '',
-      prepaidMedicine: newVal.prepaidMedicine || []
+      prepaidMedicine: newVal.prepaidMedicine || newVal.prepagadas || []
     };
     // Reset del error de imagen cuando se carga un nuevo profesional
     imageError.value = false;
@@ -83,7 +114,7 @@ const handleImageUpload = async (event: Event) => {
     }
     
     try {
-      // Aquí iría la lógica para subir la imagen
+      // Aquí iría la lógica para subir la imagen al servidor
       // Por ahora solo simulamos con un FileReader
       const reader = new FileReader();
       reader.onload = (e) => {
@@ -169,6 +200,7 @@ const close = () => {
               />
             </label>
           </div>
+          <p class="text-sm text-gray-600">{{ fullName }}</p>
         </div>
 
         <!-- Formulario -->
@@ -276,7 +308,7 @@ const close = () => {
                 :key="index"
                 class="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800"
               >
-                {{ item }}
+                {{ item.name || item }}
               </span>
               <span v-if="!formData.prepaidMedicine?.length" class="text-gray-500 text-sm">
                 No hay medicina prepagada registrada
