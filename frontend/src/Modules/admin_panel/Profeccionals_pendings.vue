@@ -1,30 +1,27 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
-import paginadeComponent from '@/common/paginade.component.vue';
 import axios from 'axios';
 import Swal from 'sweetalert2';
-import modal_Float from '@/components/modal_Float.vue';
-import iconClose from '@/assets/imageIcons/admin_icons/icons8-close.webp'
 import { store_admin_pendings } from '@/store/stores_admin_panel/pendings.store';
-
-/**
- * ! icons 
- * **/
-import iconedit from "@/assets/imageIcons/admin_icons/icons8-editar.webp"
-import icondatas from "@/assets/imageIcons/admin_icons/documents.webp"
-import icon_good from "@/assets/imageIcons/admin_icons/good_document.webp"
-import excelIcon from "@/assets/imageIcons/admin_icons/excel-icon.webp"
+import paginadeComponent from '@/common/paginade.component.vue';
+import modal_Float from '@/components/modal_Float.vue';
+import Documents_panel from './components/documents_panel.vue';
 
 import type { userPendingsDto } from '@/models/admin_panel/users_pendings';
 type StatusType = 'PENDING' | 'ACCEPTED' | 'REJECTED';
 
-/**
- * @COMPONENTES 
- * **/
-import Documents_panel from './components/documents_panel.vue';
-
 const adminProfessioanlStore = store_admin_pendings()
 const type = ref<StatusType>('PENDING')
+const searchTerm = ref('')
+const selectedProfessional = ref<userPendingsDto | null>(null)
+const showProfileModal = ref(false)
+const showDocumentsModal = ref(false)
+
+const statusOptions: { value: StatusType; label: string }[] = [
+    { value: 'PENDING', label: 'Pendiente' },
+    { value: 'ACCEPTED', label: 'Aceptado' },
+    { value: 'REJECTED', label: 'Rechazado' },
+];
 
 onMounted(() => {
     adminProfessioanlStore.get_all_users(type.value);
@@ -34,27 +31,20 @@ onUnmounted(() => {
     adminProfessioanlStore.reset();
 });
 
-const all_users = computed(() => adminProfessioanlStore.users || null);
+const all_professionals = computed(() => adminProfessioanlStore.users || []);
 const meta = computed(() => adminProfessioanlStore.meta || null);
 
-function formatDate(fechaIso: string): string {
-    const fecha = new Date(fechaIso);
-    const dia = fecha.getDate().toString().padStart(2, '0');
-    const mes = (fecha.getMonth() + 1).toString().padStart(2, '0');
-    const anio = fecha.getFullYear();
-    return `${dia}/${mes}/${anio}`;
-}
-
-const selectItem = ref<userPendingsDto | null>(null);
-const statusOptions: { value: StatusType; label: string }[] = [
-    { value: 'PENDING', label: 'Pendiente' },
-    { value: 'ACCEPTED', label: 'Aceptado' },
-    { value: 'REJECTED', label: 'Rechazado' },
-];
-
-const panels = ref({
-    viewDocuments: false,
-    editModal: false,
+const filteredProfessionals = computed(() => {
+    if (!searchTerm.value) return all_professionals.value;
+    
+    return all_professionals.value.filter(prof => {
+        const searchLower = searchTerm.value.toLowerCase();
+        return (
+            String(prof.names).toLowerCase().includes(searchLower) ||
+            String(prof.lastnames).toLowerCase().includes(searchLower) ||
+            String(prof.email).toLowerCase().includes(searchLower)
+        );
+    });
 });
 
 watch(type, (newValue) => {
@@ -64,8 +54,16 @@ watch(type, (newValue) => {
     }
 });
 
-// Función para descargar Excel - IGUAL que en Bulleting
-async function dowloadExcel() {
+function formatDate(fechaIso: string): string {
+    const fecha = new Date(fechaIso);
+    const dia = fecha.getDate().toString().padStart(2, '0');
+    const mes = (fecha.getMonth() + 1).toString().padStart(2, '0');
+    const anio = fecha.getFullYear();
+    return `${dia}/${mes}/${anio}`;
+}
+
+// Descargar base de datos
+async function downloadDatabase() {
     try {
         const response = await axios.post('/auth-pending/excel', { status: type.value }, {
             responseType: 'blob',
@@ -74,24 +72,62 @@ async function dowloadExcel() {
             type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
         });
         const url = window.URL.createObjectURL(blob);
-
         const link = document.createElement('a');
         link.href = url;
-        link.setAttribute('download', 'profesionales_pendientes.xlsx');
+        link.setAttribute('download', `profesionales_pendientes_${new Date().toISOString().split('T')[0]}.xlsx`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
         window.URL.revokeObjectURL(url);
+        
+        Swal.fire('¡Descargado!', 'La base de datos ha sido descargada exitosamente.', 'success');
     } catch (error) {
         console.error('Error al descargar el archivo:', error);
+        Swal.fire('Error', 'No se pudo descargar la base de datos.', 'error');
     }
 }
 
-// Función para aprobar perfil
-const approve = async (data: userPendingsDto) => {
+// Ver perfil
+function viewProfile(professional: userPendingsDto) {
+    selectedProfessional.value = professional;
+    showProfileModal.value = true;
+}
+
+// Ver documentos
+function viewDocuments(professional: userPendingsDto) {
+    selectedProfessional.value = professional;
+    showDocumentsModal.value = true;
+}
+
+// Cerrar modales
+function closeProfileModal() {
+    showProfileModal.value = false;
+    selectedProfessional.value = null;
+}
+
+function closeDocumentsModal() {
+    showDocumentsModal.value = false;
+    selectedProfessional.value = null;
+}
+
+// Guardar cambios del perfil
+async function saveProfileChanges(updatedData: any) {
+    try {
+        await axios.put(`/auth-pending/${updatedData.id}`, updatedData);
+        
+        Swal.fire('¡Guardado!', 'Los cambios han sido guardados exitosamente.', 'success');
+        closeProfileModal();
+        adminProfessioanlStore.get_all_users(type.value);
+    } catch (error) {
+        Swal.fire('Error', 'No se pudieron guardar los cambios.', 'error');
+    }
+}
+
+// Aprobar perfil
+async function approveProfessional(professional: userPendingsDto) {
     const result = await Swal.fire({
         title: "¿Estás seguro?",
-        text: `¿Quieres aprobar a ${data.names} ${data.lastnames}?`,
+        text: `¿Quieres aprobar a ${professional.names} ${professional.lastnames}?`,
         icon: "question",
         showCancelButton: true,
         confirmButtonText: "Sí, aprobar",
@@ -102,8 +138,8 @@ const approve = async (data: userPendingsDto) => {
 
     if (result.isConfirmed) {
         try {
-            await axios.put(`/auth-pending/approve/${data.id}`)
-  
+            await axios.put(`/auth-pending/approve/${professional.id}`);
+            
             Swal.fire({
                 title: "Aprobado",
                 text: "El profesional fue aprobado correctamente.",
@@ -122,199 +158,233 @@ const approve = async (data: userPendingsDto) => {
             });
         }
     }
-};
+}
 
-// Función para actualizar - IGUAL que en Bulleting
-const update_item = async () => {
-    try {
-        if (selectItem) {
-            await axios.put(`/auth-pending/${selectItem.value?.id}`, {
-                names: selectItem.value?.names,
-                lastnames: selectItem.value?.lastnames,
-                email: selectItem.value?.email,
-                phone: selectItem.value?.phone,
-                document: selectItem.value?.document
-            })
-            
-            Swal.fire({
-                title: "¡Éxito!",
-                text: "El profesional ha sido actualizado correctamente.",
-                icon: "success",
-                confirmButtonColor: "var(--blue-1)"
-            });
-            
-            selectItem.value = null;
-            adminProfessioanlStore.get_all_users(type.value);
-        }
-    } catch (error) {
-        let message = "Ocurrió un error inesperado.";
-
-        if (axios.isAxiosError(error)) {
-            message = error.response?.data?.message || error.message;
-        } else if (error instanceof Error) {
-            message = error.message;
-        }
-
-        Swal.fire({
-            title: "Error",
-            text: message,
-            icon: "error",
-            confirmButtonColor: "var(--blue-1)"
-        });
-    }
+// Paginación
+function changePage(page: number) {
+    adminProfessioanlStore.goToPage(page);
 }
 </script>
 
 <template>
-    <!-- Modal Ver Documentos - IGUAL estructura que Bulleting -->
-    <modal_Float :model-value="panels.viewDocuments && selectItem != null" 
-        :width-percent="90" 
-        :height-percent="90"
-        @click-outside="() => { panels.viewDocuments = false; selectItem = null }" 
-        v-if="panels.viewDocuments && selectItem">
-        <div class="w-[98%] h-full flex flex-col">
-            <div class="w-full">
-                <img :src="iconClose" alt="close" class="ml-auto cursor-pointer" 
-                    @click="() => { panels.viewDocuments = false; selectItem = null }" />
-            </div>
-            <div class="w-[95%] m-auto my-2 flex-grow overflow-auto">
-                <Documents_panel :data="selectItem" />
-            </div>
-        </div>
-    </modal_Float>
-
-    <!-- Modal Ver/Editar - EXACTAMENTE como Bulleting -->
-    <modal_Float :model-value="selectItem != null && panels.editModal" 
-        :width-percent="80" 
-        :height-percent="80"
-        @click-outside="() => { selectItem = null; panels.editModal = false }" 
-        v-if="selectItem && panels.editModal">
-        <div class="w-[98%] h-full flex flex-col">
-            <div class="w-full">
-                <img :src="iconClose" alt="close" class="ml-auto cursor-pointer" 
-                    @click="() => { selectItem = null; panels.editModal = false }" />
-            </div>
-            <div class="w-[90%] m-auto my-2 flex-grow overflow-auto">
-                <!-- Nombres -->
-                <h1 class="font-semibold text-black text-2xl">Nombres</h1>
-                <input v-model="selectItem.names" type="text" placeholder="* Nombres" :class="[
-                    'w-full p-2 rounded-md border mb-6',
-                    selectItem.names?.trim() === '' ? 'border-red-400' : 'border-gray-300'
-                ]" />
-                
-                <!-- Apellidos -->
-                <h1 class="font-semibold text-black text-2xl">Apellidos</h1>
-                <input v-model="selectItem.lastnames" type="text" placeholder="* Apellidos" :class="[
-                    'w-full p-2 rounded-md border mb-6',
-                    selectItem.lastnames?.trim() === '' ? 'border-red-400' : 'border-gray-300'
-                ]" />
-                
-                <!-- Correo -->
-                <h1 class="font-semibold text-black text-2xl">Correo</h1>
-                <input v-model="selectItem.email" type="text" placeholder="* Correo" :class="[
-                    'w-full p-2 rounded-md border mb-6',
-                    selectItem.email?.trim() === '' ? 'border-red-400' : 'border-gray-300'
-                ]" />
-                
-                <!-- Documento -->
-                <h1 class="font-semibold text-black text-2xl">Documento</h1>
-                <input v-model="selectItem.document" type="text" placeholder="* Documento" :class="[
-                    'w-full p-2 rounded-md border mb-6',
-                    selectItem.document?.trim() === '' ? 'border-red-400' : 'border-gray-300'
-                ]" />
-                
-                <!-- Teléfono -->
-                <h1 class="font-semibold text-black text-2xl">Teléfono</h1>
-                <input v-model="selectItem.phone" type="text" placeholder="* Teléfono" 
-                    class="w-full p-2 rounded-md border mb-6 border-gray-300" />
-            </div>
-            <div @click="update_item"
-                class="w-[90%] mx-auto mb-4 bg-[var(--blue-1)] rounded-2xl mt-auto cursor-pointer">
-                <h1 class="py-3 text-center text-white font-semibold">Actualizar</h1>
+    <div class="w-full bg-gray-50 min-h-screen">
+        <!-- Header con título y acciones -->
+        <div class="px-6 py-4">
+            <div class="flex justify-between items-center">
+                <h1 class="text-lg text-gray-700">Bienvenido a Doc Visual Administrador</h1>
+                <div class="flex gap-4 items-center">
+                    <!-- Selector de estado -->
+                    <select v-model="type"
+                        class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500">
+                        <option v-for="option in statusOptions" :key="option.value" :value="option.value">
+                            {{ option.label }}
+                        </option>
+                    </select>
+                    
+                    <!-- Buscador -->
+                    <div class="relative">
+                        <input 
+                            v-model="searchTerm"
+                            type="text" 
+                            placeholder="Buscar profesional..."
+                            class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                        >
+                        <svg class="absolute left-3 top-2.5 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                        </svg>
+                    </div>
+                    
+                    <!-- Botón descargar BD -->
+                    <button 
+                        @click="downloadDatabase"
+                        class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+                    >
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                        </svg>
+                        Descargar BD
+                    </button>
+                </div>
             </div>
         </div>
-    </modal_Float>
 
-    <!-- Contenido principal - EXACTAMENTE como users_registers -->
-    <div class="w-full bg-gray-100">
-        <h1 class="py-10 w-[90%] mx-auto">Bienvenido a Doc Visual Administrador</h1>
-        
-        <!-- Controles superiores -->
-        <div class="w-[90%] mx-auto mb-4 flex justify-between items-center">
-            <div class="flex gap-4">
-                <!-- Selector de estado -->
-                <select v-model="type"
-                    class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[var(--blue-1)]">
-                    <option v-for="option in statusOptions" :key="option.value" :value="option.value">
-                        {{ option.label }}
-                    </option>
-                </select>
+        <!-- Tabla -->
+        <div class="p-6">
+            <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+                <table class="min-w-full">
+                    <thead class="bg-gray-50 border-b border-gray-200">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Nombre
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Correo
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Fecha inscripción
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Acciones
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        <tr v-for="professional in filteredProfessionals" :key="professional.id" 
+                            class="hover:bg-gray-50"
+                            :class="{ 'bg-green-50': professional.status === 'ACCEPTED' }">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                {{ professional.names }} {{ professional.lastnames }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                {{ professional.email }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                {{ formatDate(professional.createdAt) }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                <div class="flex gap-2">
+                                    <!-- Botón Ver Documentos -->
+                                    <button 
+                                        @click="viewDocuments(professional)"
+                                        class="p-2 bg-green-100 hover:bg-green-200 rounded-lg transition-colors group"
+                                        title="Ver Documentos"
+                                    >
+                                        <svg class="w-5 h-5 text-green-600 group-hover:text-green-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                        </svg>
+                                    </button>
+                                    
+                                    <!-- Botón Ver/Editar Perfil -->
+                                    <button 
+                                        @click="viewProfile(professional)"
+                                        class="p-2 bg-blue-100 hover:bg-blue-200 rounded-lg transition-colors group"
+                                        title="Ver/Editar Perfil"
+                                    >
+                                        <svg class="w-5 h-5 text-blue-600 group-hover:text-blue-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                        </svg>
+                                    </button>
+                                    
+                                    <!-- Botón Aprobar Perfil -->
+                                    <button 
+                                        v-if="professional.status !== 'ACCEPTED'"
+                                        @click="approveProfessional(professional)"
+                                        class="p-2 bg-yellow-100 hover:bg-yellow-200 rounded-lg transition-colors group"
+                                        title="Aprobar Perfil"
+                                    >
+                                        <svg class="w-5 h-5 text-yellow-600 group-hover:text-yellow-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+                
+                <!-- Mensaje si no hay datos -->
+                <div v-if="filteredProfessionals.length === 0" class="text-center py-8 text-gray-500">
+                    No se encontraron profesionales pendientes
+                </div>
             </div>
             
-            <!-- Botón descargar Excel - IGUAL que Bulleting -->
-            <div @click="dowloadExcel" class="mr-5 cursor-pointer">
-                <img :src="excelIcon" alt="excel" class="mx-auto w-10 h-auto" />
-                <h1 class="md:text-base text-[10px] text-center">Descargar datos</h1>
+            <!-- Paginación -->
+            <div v-if="meta" class="mt-4 flex justify-center">
+                <paginadeComponent 
+                    :meta="meta"
+                    @change-page="changePage"
+                />
             </div>
         </div>
-        
-        <!-- Tabla - IGUAL estructura que users_registers -->
-        <div class="w-[90%] mx-auto bg-white rounded-2xl shadow-gray-300 shadow-2xl min-h-[500px]"
-            v-if="all_users && all_users.length">
-            <table class="min-w-full bg-white shadow-md rounded-xl overflow-hidden">
-                <thead class="bg-gray-100 text-gray-700 text-left">
-                    <tr>
-                        <th class="px-6 py-3">Nombre</th>
-                        <th class="px-6 py-3">Correo</th>
-                        <th class="px-6 py-3">Fecha inscripción</th>
-                        <th class="px-6 py-3">Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr v-for="user in all_users" :key="user.id" 
-                        class="border-b hover:bg-gray-50"
-                        :class="{ 'bg-green-100': user.status === 'ACCEPTED' }">
-                        <td class="px-6 py-3">{{ user.names + " " + user.lastnames }}</td>
-                        <td class="px-6 py-3">{{ user.email }}</td>
-                        <td class="px-6 py-3">{{ formatDate(user.createdAt) }}</td>
-                        <td class="px-6 py-3">
-                            <div class="flex gap-2">
-                                <!-- Ver documentos -->
-                                <img :src="icondatas" alt="documents" 
-                                    class="w-7 h-7 hover:cursor-pointer"
-                                    v-tooltip="'Ver documentos'"
-                                    @click="() => { 
-                                        panels.editModal = false; 
-                                        panels.viewDocuments = true; 
-                                        selectItem = user 
-                                    }" />
-                                
-                                <!-- Ver/Editar perfil -->
-                                <img :src="iconedit" alt="edit view" 
-                                    class="w-7 h-7 hover:cursor-pointer"
-                                    v-tooltip="'Ver/Editar perfil'"
-                                    @click="() => { 
-                                        panels.viewDocuments = false; 
-                                        panels.editModal = true; 
-                                        selectItem = user 
-                                    }" />
-                                
-                                <!-- Aprobar perfil -->
-                                <img v-if="user.status !== 'ACCEPTED'"
-                                    :src="icon_good" alt="aprovar" 
-                                    class="w-7 h-7 hover:cursor-pointer"
-                                    v-tooltip="'Aprobar perfil'" 
-                                    @click="approve(user)" />
-                            </div>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-        
-        <!-- Mensaje cuando no hay datos -->
-        <div v-else class="w-[90%] mx-auto bg-white rounded-2xl shadow-gray-300 shadow-2xl min-h-[500px] flex items-center justify-center">
-            <p class="text-gray-500">No se encontraron profesionales pendientes</p>
-        </div>
+
+        <!-- Modal de Perfil -->
+        <modal_Float 
+            v-if="showProfileModal && selectedProfessional" 
+            :model-value="showProfileModal"
+            :width-percent="80"
+            :height-percent="90"
+            @click-outside="closeProfileModal"
+        >
+            <div class="bg-white rounded-lg p-6 h-full overflow-auto">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold">Perfil del Profesional</h2>
+                    <button @click="closeProfileModal" class="text-gray-500 hover:text-gray-700">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Nombres</label>
+                        <input v-model="selectedProfessional.names" type="text"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Apellidos</label>
+                        <input v-model="selectedProfessional.lastnames" type="text"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Correo electrónico</label>
+                        <input v-model="selectedProfessional.email" type="email"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Documento</label>
+                        <input v-model="selectedProfessional.document" type="text"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
+                        <input v-model="selectedProfessional.phone" type="text"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Estado</label>
+                        <input :value="selectedProfessional.status" type="text" disabled
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100">
+                    </div>
+                </div>
+                
+                <div class="mt-6 flex justify-end gap-3">
+                    <button @click="closeProfileModal"
+                        class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400">
+                        Cancelar
+                    </button>
+                    <button @click="saveProfileChanges(selectedProfessional)"
+                        class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">
+                        Guardar cambios
+                    </button>
+                </div>
+            </div>
+        </modal_Float>
+
+        <!-- Modal de Documentos -->
+        <modal_Float 
+            v-if="showDocumentsModal && selectedProfessional" 
+            :model-value="showDocumentsModal"
+            :width-percent="70"
+            :height-percent="80"
+            @click-outside="closeDocumentsModal"
+        >
+            <div class="bg-white rounded-lg p-6 h-full">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-bold">Documentos del Profesional</h2>
+                    <button @click="closeDocumentsModal" class="text-gray-500 hover:text-gray-700">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+                <Documents_panel :data="selectedProfessional" />
+            </div>
+        </modal_Float>
     </div>
 </template>
