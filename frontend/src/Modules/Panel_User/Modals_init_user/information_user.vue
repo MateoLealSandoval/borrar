@@ -216,7 +216,7 @@ const savedata = async () => {
             if (!valid) {
                 Swal.fire({
                     icon: 'error',
-                    title: 'Datos guardados',
+                    title: 'Datos no guardados',
                     text: message +'Por favor, completa todos los campos obligatorios correctamente.',
                     confirmButtonText: 'OK',
                     confirmButtonColor: "var(--blue-1)"

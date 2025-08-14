@@ -2,13 +2,15 @@
 :root {
   /* --blue-1: #5f9fd5; */
     --blue-1: #6479FD;
-  --blue-2: #57a4ec;
+  /* --blue-2: #57a4ec; */
+  --blue-2: #6479FD;
   --blue-3: #6479FD;
   --grayicon-1: #707176;
   --bluegray-1: #e7f1f9;
   --gray-1: #ececed;
   --gray-2: #f6f6f6;
-  --blue-gradientPurple: linear-gradient(180deg, rgba(178, 211, 255, 1) 1%, rgba(178, 188, 255, 1) 100%);
+  /* --blue-gradientPurple: linear-gradient(180deg, rgba(178, 211, 255, 1) 1%, rgba(178, 188, 255, 1) 100%);*/
+  --blue-gradientPurple: linear-gradient(180deg, rgba(100, 166, 253, 1) 1%, rgba(100, 121, 253, 1) 100%);
   --blue-purple-2: linear-gradient(180deg, rgba(100, 166, 253, 1) 1%, rgba(100, 121, 253, 1) 100%);
   --green-1: #00c3a5;
 }

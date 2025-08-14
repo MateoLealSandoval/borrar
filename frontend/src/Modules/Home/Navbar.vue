@@ -163,41 +163,7 @@ onBeforeUnmount(() => {
               </a>
             </div>
 
-            <!-- Acceso a especialistas -->
-            <div class="flex gap-3" @click="toggle_specialistMovile">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
-                stroke="currentColor" class="size-6"
-                :style="{ color: open_specialistMovile ? 'var(--blue-1)' : 'black' }">
-                <path stroke-linecap="round" stroke-linejoin="round"
-                  d="M17.982 18.725A7.488 7.488 0 0 0 12 15.75a7.488 7.488 0 0 0-5.982 2.975m11.963 0a9 9 0 1 0-11.963 0m11.963 0A8.966 8.966 0 0 1 12 21a8.966 8.966 0 0 1-5.982-2.275M15 9.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-              </svg>
-              <a class="cursor-pointer font-poppins font-semibold text-md text-black hover:text-[var(--blue-1)]"
-                :style="{ color: open_specialistMovile ? 'var(--blue-1)' : 'black' }">
-                Acceso a especialistas
-              </a>
-            </div>
-
-            <!-- Submenu Especialistas -->
-            <div v-if="open_specialistMovile" class="ml-5">
-              <ul>
-                <li class="px-4 py-2 hover:bg-gray-100 cursor-pointer" @click="goToAbout('/auth-professional')">
-                  Mi cuenta</li>
-                <li class="px-4 py-2 hover:bg-gray-100 cursor-pointer" @click="goToAbout('/planes')"
-                  :style="{ color: currentRoute === '/planes' ? 'var(--blue-1)' : 'black' }">
-                  Planes</li>
-                <li class="px-4 py-2 hover:bg-gray-100 cursor-pointer" @click="goToAbout('/planes')"
-                  :style="{ color: currentRoute === '/planes' ? 'var(--blue-1)' : 'black' }">
-                  Recursos</li>
-                <li class="px-4 py-2 hover:bg-gray-100 cursor-pointer" @click="goToAbout('/planes')"
-                  :style="{ color: currentRoute === '/planes' ? 'var(--blue-1)' : 'black' }">
-                  Proveedores</li>
-                <li class="px-4 py-2 hover:bg-gray-100 cursor-pointer" @click="goToAbout('/planes')"
-                  :style="{ color: currentRoute === '/planes' ? 'var(--blue-1)' : 'black' }">
-                  Academia</li>
-              </ul>
-            </div>
-
-            <!-- Acceso a Pacientes -->
+            <!-- Acceso a Pacientes PRIMERO -->
             <div class="flex gap-3" @click="toggleAuthMovile">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
                 stroke="currentColor" class="size-6"
@@ -215,10 +181,38 @@ onBeforeUnmount(() => {
             <div v-if="open_tipe_auth_movile" class="ml-5 bg-white rounded-lg z-10">
               <ul>
                 <li class="px-4 py-2 hover:bg-gray-100 cursor-pointer"
-                  :style="{ color: currentRoute === '/accountuser' ? 'var(--blue-1)' : 'black' }"
-                  @click="goToAbout('/auth')">Mi cuenta</li>
+                  :style="{ color: currentRoute === '/auth' ? 'var(--blue-1)' : 'black' }"
+                  @click="goToAbout('/auth')">Iniciar sesión</li>
                 <li class="px-4 py-2 hover:bg-gray-100 cursor-pointer">Productos</li>
                 <li class="px-4 py-2 hover:bg-gray-100 cursor-pointer">Recursos</li>
+              </ul>
+            </div>
+
+            <!-- Acceso a Especialistas SEGUNDO -->
+            <div class="flex gap-3" @click="toggle_specialistMovile">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+                stroke="currentColor" class="size-6"
+                :style="{ color: open_specialistMovile ? 'var(--blue-1)' : 'black' }">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M17.982 18.725A7.488 7.488 0 0 0 12 15.75a7.488 7.488 0 0 0-5.982 2.975m11.963 0a9 9 0 1 0-11.963 0m11.963 0A8.966 8.966 0 0 1 12 21a8.966 8.966 0 0 1-5.982-2.275M15 9.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+              </svg>
+              <a class="cursor-pointer font-poppins font-semibold text-md text-black hover:text-[var(--blue-1)]"
+                :style="{ color: open_specialistMovile ? 'var(--blue-1)' : 'black' }">
+                Acceso a especialistas
+              </a>
+            </div>
+
+            <!-- Submenu Especialistas -->
+            <div v-if="open_specialistMovile" class="ml-5">
+              <ul>
+                <li class="px-4 py-2 hover:bg-gray-100 cursor-pointer" @click="goToAbout('/auth-professional')">
+                  Iniciar sesión</li>
+                <li class="px-4 py-2 hover:bg-gray-100 cursor-pointer" @click="goToAbout('/planes')"
+                  :style="{ color: currentRoute === '/planes' ? 'var(--blue-1)' : 'black' }">
+                  Planes</li>
+                <li class="px-4 py-2 hover:bg-gray-100 cursor-pointer">Recursos</li>
+                <li class="px-4 py-2 hover:bg-gray-100 cursor-pointer">Proveedores</li>
+                <li class="px-4 py-2 hover:bg-gray-100 cursor-pointer">Academia</li>
               </ul>
             </div>
 
@@ -268,34 +262,7 @@ onBeforeUnmount(() => {
             Home
           </a>
 
-          <!-- Acceso a especialistas -->
-          <div class="relative inline-block" ref="specialistRef">
-            <a class="text-black text-sm cursor-pointer px-2 py-2 font-poppins font-semibold md:text-md transition-colors duration-300 transform rounded-lg hover:!text-[#8dd5ff]"
-              @click="toggle_specialist">
-              Acceso a especialistas
-            </a>
-            <div v-if="open_specialist"
-              class="absolute left-0 min-w-[150px] max-w-[200px] mt-2 bg-white border border-gray-300 shadow-lg rounded-lg z-10">
-              <ul class="py-2">
-                <li class="px-4 py-2 hover:bg-gray-100 cursor-pointer" @click="goToAbout('/auth-professional')">
-                  Mi cuenta</li>
-                <li class="px-4 py-2 hover:bg-gray-100 cursor-pointer" @click="goToAbout('/planes')"
-                  :style="{ color: currentRoute === '/planes' ? 'var(--blue-1)' : 'black' }">
-                  Planes</li>
-                <li class="px-4 py-2 hover:bg-gray-100 cursor-pointer" @click="goToAbout('/planes')"
-                  :style="{ color: currentRoute === '/planes' ? 'var(--blue-1)' : 'black' }">
-                  Recursos</li>
-                <li class="px-4 py-2 hover:bg-gray-100 cursor-pointer" @click="goToAbout('/planes')"
-                  :style="{ color: currentRoute === '/planes' ? 'var(--blue-1)' : 'black' }">
-                  Proveedores</li>
-                <li class="px-4 py-2 hover:bg-gray-100 cursor-pointer" @click="goToAbout('/planes')"
-                  :style="{ color: currentRoute === '/planes' ? 'var(--blue-1)' : 'black' }">
-                  Academia</li>
-              </ul>
-            </div>
-          </div>
-
-          <!-- Acceso a Pacientes -->
+          <!-- Acceso a Pacientes PRIMERO en desktop -->
           <div class="relative inline-block" ref="patientRef">
             <a class="text-black text-sm cursor-pointer px-2 py-2 font-poppins font-semibold md:text-md transition-colors duration-300 transform rounded-lg hover:!text-[#8dd5ff]"
               @click="toggleauth">
@@ -305,10 +272,31 @@ onBeforeUnmount(() => {
               class="absolute left-0 min-w-[150px] max-w-[200px] mt-2 bg-white border border-gray-300 shadow-lg rounded-lg z-10">
               <ul class="py-2">
                 <li class="px-4 py-2 hover:bg-gray-100 cursor-pointer"
-                  :style="{ color: currentRoute === '/accountuser' ? 'var(--blue-1)' : 'black' }"
-                  @click="goToAbout('/auth')">Mi cuenta</li>
+                  :style="{ color: currentRoute === '/auth' ? 'var(--blue-1)' : 'black' }"
+                  @click="goToAbout('/auth')">Iniciar sesión</li>
                 <li class="px-4 py-2 hover:bg-gray-100 cursor-pointer">Productos</li>
                 <li class="px-4 py-2 hover:bg-gray-100 cursor-pointer">Recursos</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- Acceso a Especialistas SEGUNDO en desktop -->
+          <div class="relative inline-block" ref="specialistRef">
+            <a class="text-black text-sm cursor-pointer px-2 py-2 font-poppins font-semibold md:text-md transition-colors duration-300 transform rounded-lg hover:!text-[#8dd5ff]"
+              @click="toggle_specialist">
+              Acceso a especialistas
+            </a>
+            <div v-if="open_specialist"
+              class="absolute left-0 min-w-[150px] max-w-[200px] mt-2 bg-white border border-gray-300 shadow-lg rounded-lg z-10">
+              <ul class="py-2">
+                <li class="px-4 py-2 hover:bg-gray-100 cursor-pointer" @click="goToAbout('/auth-professional')">
+                  Iniciar sesión</li>
+                <li class="px-4 py-2 hover:bg-gray-100 cursor-pointer" @click="goToAbout('/planes')"
+                  :style="{ color: currentRoute === '/planes' ? 'var(--blue-1)' : 'black' }">
+                  Planes</li>
+                <li class="px-4 py-2 hover:bg-gray-100 cursor-pointer">Recursos</li>
+                <li class="px-4 py-2 hover:bg-gray-100 cursor-pointer">Proveedores</li>
+                <li class="px-4 py-2 hover:bg-gray-100 cursor-pointer">Academia</li>
               </ul>
             </div>
           </div>
@@ -331,31 +319,11 @@ onBeforeUnmount(() => {
           <a class="text-sm cursor-pointer px-2 py-1 font-poppins font-semibold md:text-md text-black transition-colors duration-300 transform rounded-lg hover:!text-[#5f9fd5]"
             @click="goToAbout('/questions')"
             :style="{ color: currentRoute === '/questions' ? 'var(--blue-1)' : 'black' }">
-            Preguntas
-          </a>
-
-          <!-- Quienes somos -->
-          <a class="text-sm cursor-pointer px-2 py-1 font-poppins font-semibold md:text-md text-black transition-colors duration-300 transform rounded-lg hover:!text-[#5f9fd5]"
-            @click="goToAbout('/about_us')"
-            :style="{ color: currentRoute === '/about_us' ? 'var(--blue-1)' : 'black' }">
-            ¿Quiénes somos?
+            Preguntas frecuentes
           </a>
 
         </div>
       </div>
-
     </div>
   </nav>
 </template>
-
-<style scoped>
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.3s ease;
-}
-
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
-}
-</style>
