@@ -7,6 +7,21 @@ const props = defineProps<{
 }>();
 const adminInformation = use_adminPanel_information();
 
+/** 
+ * Todo import images
+ * **/
+import ProfessionalRegisters from "@/assets/imageIcons/profesionalesreg.png"
+import ImageRegistersUser from "@/assets/imageIcons/usuarioreg.png"
+import ImageAppointment from "@/assets/imageIcons/citasprog.png"
+import ImageSuscripts from "@/assets/imageIcons/suscripciones.png"
+import ImageRating from "@/assets/imageIcons/ratingprofe.png"
+import ImageDeleteUsers from "@/assets/imageIcons/usuarioseliminados.png"
+import ImageDeleteProfessionals from "@/assets/imageIcons/profesionaleliminado.png"
+import ImageProfeccioanlsConfirm from "@/assets/imageIcons/perfilesporaprobar.png"
+
+/** 
+ * Todo import components
+ * **/
 import itemInformation from './itemInformation.vue';
 import { AdminPanelOptionEnum } from './Admin_types_panels';
 
@@ -18,7 +33,7 @@ const shedules_datas_office = computed(() => adminInformation.informationdata ||
 
 <template>
   <div class="w-full min-h-full" v-if="shedules_datas_office != null">
-    <!-- Título sobre fondo gris -->
+    <!-- Título sobre fondo gris (no en contenedor blanco) -->
     <div class="px-8 py-6">
       <h1 class="text-lg text-gray-700">
         Bienvenido a Doc Visual Administrador
@@ -29,49 +44,49 @@ const shedules_datas_office = computed(() => adminInformation.informationdata ||
     <div class="px-8">
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 max-w-7xl">
         <itemInformation 
-          :icon="'professionals'" 
+          :image="ProfessionalRegisters" 
           :value="shedules_datas_office.numberProfessionals || 0"
           :label="'Profesionales Registrados'"
           :gotoPanel="() => changePanel(AdminPanelOptionEnum.PROFESSIONAL_REGISTER)" 
         />
         <itemInformation 
-          :icon="'patients'" 
+          :image="ImageRegistersUser" 
           :value="shedules_datas_office.countUsers || 0"
           :label="'Pacientes Registrados'" 
           :gotoPanel="() => changePanel(AdminPanelOptionEnum.USER_REGISTER)"
         />
         <itemInformation 
-          :icon="'appointments'" 
+          :image="ImageAppointment" 
           :value="shedules_datas_office.reservations || 0"
           :label="'Citas Programadas'" 
           :gotoPanel="() => changePanel(AdminPanelOptionEnum.QUOTES)"
         />
         <itemInformation 
-          :icon="'subscriptions'" 
+          :image="ImageSuscripts" 
           :value="shedules_datas_office.numberProfessionals || 0"
           :label="'Suscripciones'" 
           :gotoPanel="() => changePanel(AdminPanelOptionEnum.SUBSCRIPTIONS)"
         />
         <itemInformation 
-          :icon="'rating'" 
+          :image="ImageRating" 
           :value="shedules_datas_office.numberProfessionals || 0"
           :label="'Rating Profesionales'" 
           :gotoPanel="() => changePanel(AdminPanelOptionEnum.PROFESSIONAL_RATING)"
         />
         <itemInformation 
-          :icon="'deleted_patients'" 
+          :image="ImageDeleteUsers" 
           :value="shedules_datas_office.deleteUsers || 0"
           :label="'Pacientes Eliminados'" 
           :gotoPanel="() => changePanel(AdminPanelOptionEnum.DELETION_REQUESTS)"
         />
         <itemInformation 
-          :icon="'deleted_professionals'" 
+          :image="ImageDeleteProfessionals" 
           :value="shedules_datas_office.deleteUsersPartner || 0"
           :label="'Profesionales Eliminados'" 
           :gotoPanel="() => changePanel(AdminPanelOptionEnum.DELETION_REQUESTS)"
         />
         <itemInformation 
-          :icon="'pending_approval'" 
+          :image="ImageProfeccioanlsConfirm" 
           :value="shedules_datas_office.pendingPartner || 0"
           :label="'Profesionales Por aprobar'" 
           :gotoPanel="() => changePanel(AdminPanelOptionEnum.PROFESSIONALS_PENDINGS)"
@@ -79,10 +94,8 @@ const shedules_datas_office = computed(() => adminInformation.informationdata ||
       </div>
     </div>
 
-    <!-- Footer -->
-    <div class="mt-16 px-8 py-4 text-center text-xs text-gray-500">
-      <p>2025 DocVisual® Todos los derechos reservados</p>
-    </div>
+    <!-- Espaciado para el footer -->
+    <div class="h-20"></div>
   </div>
 
   <!-- Loading state -->

@@ -1,5 +1,3 @@
-<!-- ARCHIVO 1: frontend/src/views/panelAdmin/PanelAdmin.vue -->
-<!-- Reemplazar TODO el archivo con este código -->
 <script setup lang="ts">
 import Navbar_panel from '@/common/Navbar_panel.vue';
 import { ref } from 'vue';
@@ -50,7 +48,7 @@ function changePanel(option: AdminPanelOptionEnum) {
     <div class="w-screen h-screen flex flex-col">
         <!-- Header Global con Logo -->
         <div class="bg-white h-16 border-b border-gray-200 flex items-center px-6 z-50">
-            <img src="/src/assets/logo.png" alt="Doc Visual" class="h-10" />
+            <img src="@/assets/logo.svg" alt="Doc Visual" class="h-10" />
         </div>
 
         <div class="flex flex-1 overflow-hidden">
@@ -220,20 +218,39 @@ function changePanel(option: AdminPanelOptionEnum) {
             </aside>
 
             <!-- Contenido Principal -->
-            <main class="flex-1 overflow-auto bg-gray-50">
-                <Information_adminPanel v-if="panelselect === AdminPanelOptionEnum.ADMIN" 
-                    :changePanel="changePanel" />
-                <Professionals_registers v-if="panelselect === AdminPanelOptionEnum.PROFESSIONAL_REGISTER" />
-                <users_registers v-if="panelselect === AdminPanelOptionEnum.USER_REGISTER" />
-                <Profeccionals_pendings v-if="panelselect === AdminPanelOptionEnum.PROFESSIONALS_PENDINGS" />
-                <h1 v-if="panelselect === AdminPanelOptionEnum.QUOTES">quotes</h1>
-                <Bulleting v-if="panelselect === AdminPanelOptionEnum.SUBSCRIPTIONS" />
-                <h1 v-if="panelselect === AdminPanelOptionEnum.PROFESSIONAL_RATING">professional rating</h1>
-                <h1 v-if="panelselect === AdminPanelOptionEnum.DELETION_REQUESTS">deletion requests</h1>
-                <h1 v-if="panelselect === AdminPanelOptionEnum.NEWSLETTER">newsletter</h1>
-                <h1 v-if="panelselect === AdminPanelOptionEnum.WEB_BANNERS">web banners</h1>
-                <h1 v-if="panelselect === AdminPanelOptionEnum.MESSAGES">messages</h1>
-                <h1 v-if="panelselect === AdminPanelOptionEnum.BLOG">blog</h1>
+            <main class="flex-1 overflow-auto bg-gray-50 flex flex-col">
+                <div class="flex-1">
+                    <Information_adminPanel v-if="panelselect === AdminPanelOptionEnum.ADMIN" 
+                        :changePanel="changePanel" />
+                    <Professionals_registers v-if="panelselect === AdminPanelOptionEnum.PROFESSIONAL_REGISTER" />
+                    <users_registers v-if="panelselect === AdminPanelOptionEnum.USER_REGISTER" />
+                    <Profeccionals_pendings v-if="panelselect === AdminPanelOptionEnum.PROFESSIONALS_PENDINGS" />
+                    <h1 v-if="panelselect === AdminPanelOptionEnum.QUOTES">quotes</h1>
+                    <Bulleting v-if="panelselect === AdminPanelOptionEnum.SUBSCRIPTIONS" />
+                    <h1 v-if="panelselect === AdminPanelOptionEnum.PROFESSIONAL_RATING">professional rating</h1>
+                    <h1 v-if="panelselect === AdminPanelOptionEnum.DELETION_REQUESTS">deletion requests</h1>
+                    <h1 v-if="panelselect === AdminPanelOptionEnum.NEWSLETTER">newsletter</h1>
+                    <h1 v-if="panelselect === AdminPanelOptionEnum.WEB_BANNERS">web banners</h1>
+                    <h1 v-if="panelselect === AdminPanelOptionEnum.MESSAGES">messages</h1>
+                    <h1 v-if="panelselect === AdminPanelOptionEnum.BLOG">blog</h1>
+                </div>
+                
+                <!-- Footer con barra de colores -->
+                <div class="bg-white border-t border-gray-200">
+                    <div class="text-center py-3 text-xs text-gray-500">
+                        <p>2025 DocVisual® Todos los derechos reservados</p>
+                    </div>
+                    <!-- Barra de colores -->
+                    <div class="flex h-2">
+                        <div class="flex-1 bg-yellow-400"></div>
+                        <div class="flex-1 bg-green-500"></div>
+                        <div class="flex-1 bg-teal-500"></div>
+                        <div class="flex-1 bg-blue-500"></div>
+                        <div class="flex-1 bg-purple-500"></div>
+                        <div class="flex-1 bg-pink-500"></div>
+                        <div class="flex-1 bg-red-500"></div>
+                    </div>
+                </div>
             </main>
         </div>
     </div>
