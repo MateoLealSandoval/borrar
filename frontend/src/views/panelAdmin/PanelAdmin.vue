@@ -106,7 +106,7 @@ function changePanel(option: AdminPanelOptionEnum) {
                             <a @click="panelselect = AdminPanelOptionEnum.USER_REGISTER"
                                 :style="{ fontWeight: panelselect === AdminPanelOptionEnum.USER_REGISTER ? 'bold' : 'normal' }"
                                 class="flex items-center p-2 text-white rounded-lg hover:bg-indigo-100 transition-colors duration-300 menu-item-hover">
-                                Usuarios Registrados
+                                Pacientes Registrados
                             </a>
                         </li>
                         <li class="animate-fade-in" style="animation-delay: 0.1s;">

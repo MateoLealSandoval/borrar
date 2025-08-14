@@ -19,7 +19,7 @@ async function updateUserRole(user: UsersPanelAdminDtos, checked: boolean) {
   if (user.role === "DELETED_USER") {
     const result = await Swal.fire({
       title: "¡Alerta!",
-      text: `¿Quieres habilitar al usuario ${user.names} ${user.lastnames}?`,
+      text: `¿Quieres habilitar al paciente ${user.names} ${user.lastnames}?`,
       icon: "warning",
       showCancelButton: true,
       confirmButtonColor: "var(--blue-1)",
