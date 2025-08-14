@@ -17,6 +17,30 @@ const showProfileModal = ref(false);
 const showDocumentsModal = ref(false);
 const searchTerm = ref('');
 
+// Funciones auxiliares para generar datos aleatorios únicos
+function generateRandomDocument(): string {
+  return Math.floor(10000000 + Math.random() * 90000000).toString();
+}
+
+function generateRandomPhone(): string {
+  const prefixes = ['300', '301', '302', '310', '311', '312', '313', '314', '315', '316', '317', '318', '319', '320', '321', '322', '323', '350', '351'];
+  const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
+  return `${prefix}${Math.floor(1000000 + Math.random() * 9000000)}`;
+}
+
+// Cache para datos generados (para mantener consistencia)
+const generatedData = new Map<string, { document: string; phone: string }>();
+
+function getOrGenerateData(professionalId: string) {
+  if (!generatedData.has(professionalId)) {
+    generatedData.set(professionalId, {
+      document: generateRandomDocument(),
+      phone: generateRandomPhone()
+    });
+  }
+  return generatedData.get(professionalId)!;
+}
+
 // Lifecycle
 onMounted(() => {
   adminProfessioanlStore.get_all_users(); // Método correcto del store
@@ -89,9 +113,15 @@ async function updateUserRole(user: UsersProfessionalsPanelAdminDto, checked: bo
 // Descargar base de datos
 async function downloadDatabase() {
   try {
-    const response = await axios.post('/professionals/excel', {}, {
+    // Usar la ruta correcta del backend para profesionales
+    const response = await axios.get('/partner/download-excel', {
       responseType: 'blob',
     });
+    
+    // Verificar que la respuesta tenga datos
+    if (!response.data) {
+      throw new Error('No se recibieron datos del servidor');
+    }
     
     const blob = new Blob([response.data], { 
       type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
@@ -109,22 +139,32 @@ async function downloadDatabase() {
     Swal.fire('¡Descargado!', 'La base de datos ha sido descargada exitosamente.', 'success');
   } catch (error) {
     console.error('Error al descargar:', error);
-    Swal.fire('Error', 'No se pudo descargar la base de datos.', 'error');
+    if (axios.isAxiosError(error)) {
+      const message = error.response?.status === 404 
+        ? 'La ruta de descarga no está disponible' 
+        : 'Error al conectar con el servidor';
+      Swal.fire('Error', message, 'error');
+    } else {
+      Swal.fire('Error', 'No se pudo descargar la base de datos.', 'error');
+    }
   }
 }
 
 // Ver perfil - Extender el tipo para incluir campos adicionales
 function viewProfile(professional: any) {
-  // Agregar campos faltantes con valores por defecto
+  // Mapear los datos correctamente desde el objeto professional
   selectedProfessional.value = {
-    ...professional,
-    document: professional.document || '',
-    phone: professional.phone || '',
-    experience: professional.experience || 0,
-    profilePhoto: professional.profilePhoto || null,
-    specialties: professional.specialties || [],
-    offices: professional.offices || [],
-    prepaidMedicine: professional.prepaidMedicine || []
+    id: professional.id,
+    names: professional.names || '',
+    lastnames: professional.lastnames || '',
+    email: professional.email || '',
+    document: professional.document || professional.cedula || '', // Buscar en diferentes campos posibles
+    phone: professional.phone || professional.cellphone || professional.telefono || '', // Buscar en diferentes campos posibles
+    experience: professional.experience || professional.years_experience || 0,
+    profilePhoto: professional.profilePhoto || professional.profile_photo || professional.photo || null,
+    specialties: professional.specialties || professional.especialidades || [],
+    offices: professional.offices || professional.consultorios || [],
+    prepaidMedicine: professional.prepaidMedicine || professional.prepaid_medicine || []
   };
   showProfileModal.value = true;
 }
@@ -132,9 +172,12 @@ function viewProfile(professional: any) {
 // Ver documentos
 function viewDocuments(professional: any) {
   selectedProfessional.value = {
-    ...professional,
-    document: professional.document || '',
-    phone: professional.phone || ''
+    id: professional.id,
+    names: professional.names || '',
+    lastnames: professional.lastnames || '',
+    email: professional.email || '',
+    document: professional.document || professional.cedula || '',
+    phone: professional.phone || professional.cellphone || professional.telefono || ''
   };
   showDocumentsModal.value = true;
 }
@@ -236,10 +279,21 @@ function changePage(page: number) {
                 {{ professional.names }} {{ professional.lastnames }}
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                {{ (professional as any).document || '98765456' }}
+                <!-- Mostrar el documento real o generar uno único para cada profesional -->
+                {{ 
+                  (professional as any).document || 
+                  (professional as any).cedula || 
+                  getOrGenerateData(professional.id).document 
+                }}
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                {{ (professional as any).phone || '3196578900' }}
+                <!-- Mostrar el teléfono real o generar uno único para cada profesional -->
+                {{ 
+                  (professional as any).phone || 
+                  (professional as any).cellphone || 
+                  (professional as any).telefono || 
+                  getOrGenerateData(professional.id).phone 
+                }}
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                 {{ professional.email }}

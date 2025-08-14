@@ -10,27 +10,33 @@ const emit = defineEmits<{
   save: [data: any];
 }>();
 
-// Estados del formulario
+// Estados del formulario con manejo mejorado de datos
 const formData = ref({
   id: props.professional.id,
   names: props.professional.names || '',
   lastnames: props.professional.lastnames || '',
   email: props.professional.email || '',
-  document: props.professional.document || '',
-  phone: props.professional.phone || '',
-  experience: props.professional.experience || 0,
-  profilePhoto: props.professional.profilePhoto || null,
-  specialties: props.professional.specialties || [],
-  offices: props.professional.offices || [],
-  prepaidMedicine: props.professional.prepaidMedicine || []
+  document: props.professional.document || props.professional.cedula || '',
+  phone: props.professional.phone || props.professional.cellphone || props.professional.telefono || '',
+  experience: props.professional.experience || props.professional.years_experience || 0,
+  profilePhoto: props.professional.profilePhoto || props.professional.profile_photo || props.professional.photo || null,
+  specialties: props.professional.specialties || props.professional.especialidades || [],
+  offices: props.professional.offices || props.professional.consultorios || [],
+  prepaidMedicine: props.professional.prepaidMedicine || props.professional.prepaid_medicine || []
 });
 
 // Estados para campos de acción
 const newSpecialty = ref('');
 const selectedPrepaid = ref('');
 
-// Foto de perfil
-const profileImageUrl = ref(props.professional.profilePhoto || '');
+// Foto de perfil - manejar diferentes posibles campos
+const profileImageUrl = ref(
+  props.professional.profilePhoto || 
+  props.professional.profile_photo || 
+  props.professional.photo || 
+  props.professional.image || 
+  ''
+);
 
 // Opciones de prepagadas
 const prepaidOptions = [
