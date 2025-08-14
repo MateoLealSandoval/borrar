@@ -19,7 +19,7 @@ const searchTerm = ref('');
 
 // Lifecycle
 onMounted(() => {
-  adminProfessioanlStore.get_all_profesionals(); // Método correcto
+  adminProfessioanlStore.get_all_users(); // Método correcto del store
 });
 
 onUnmounted(() => {
@@ -158,7 +158,7 @@ async function saveProfileChanges(updatedData: any) {
     
     Swal.fire('¡Guardado!', 'Los cambios han sido guardados exitosamente.', 'success');
     closeProfileModal();
-    adminProfessioanlStore.get_all_profesionals(); // Recargar datos
+    adminProfessioanlStore.get_all_users(); // Recargar datos
   } catch (error) {
     Swal.fire('Error', 'No se pudieron guardar los cambios.', 'error');
   }
@@ -166,7 +166,7 @@ async function saveProfileChanges(updatedData: any) {
 
 // Paginación
 function changePage(page: number) {
-  adminProfessioanlStore.changePage(page);
+  adminProfessioanlStore.goToPage(page); // Método correcto del store
 }
 </script>
 
