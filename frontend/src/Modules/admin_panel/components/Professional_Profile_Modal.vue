@@ -1,420 +1,324 @@
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
+import type { user_professional_dto } from '@/dto/professional';
 
+// Props con tipo correcto
 const props = defineProps<{
-  professional: any; // Usando any para mayor flexibilidad
+  professional: user_professional_dto | null;
+  showModal: boolean;
 }>();
 
+// Emits
 const emit = defineEmits<{
   close: [];
   save: [data: any];
 }>();
 
-// Estados del formulario con manejo mejorado de datos
+// Estado del formulario
 const formData = ref({
-  id: props.professional.id,
-  names: props.professional.names || '',
-  lastnames: props.professional.lastnames || '',
-  email: props.professional.email || '',
-  document: props.professional.document || props.professional.cedula || '',
-  phone: props.professional.phone || props.professional.cellphone || props.professional.telefono || '',
-  experience: props.professional.experience || props.professional.years_experience || 0,
-  profilePhoto: props.professional.profilePhoto || props.professional.profile_photo || props.professional.photo || null,
-  specialties: props.professional.specialties || props.professional.especialidades || [],
-  offices: props.professional.offices || props.professional.consultorios || [],
-  prepaidMedicine: props.professional.prepaidMedicine || props.professional.prepaid_medicine || []
+  id: props.professional?.id || '',
+  names: props.professional?.names || '',
+  lastnames: props.professional?.lastnames || '',
+  email: props.professional?.email || '',
+  document: props.professional?.document || '',
+  phone: props.professional?.phone || '',
+  experience: props.professional?.experience || 0,
+  description: props.professional?.description || '',
+  perfilPhoto: props.professional?.perfilPhoto || '',
+  prepaidMedicine: props.professional?.prepaidMedicine || []
 });
 
-// Estados para campos de acción
-const newSpecialty = ref('');
-const selectedPrepaid = ref('');
+// Estado para manejo de errores de imagen
+const imageError = ref(false);
+const defaultImage = 'https://res.cloudinary.com/dirsusbyy/image/upload/v1742425056/fidungtrcbetkco1tqqz.png';
 
-// Foto de perfil - manejar diferentes posibles campos
-const profileImageUrl = ref(
-  props.professional.profilePhoto || 
-  props.professional.profile_photo || 
-  props.professional.photo || 
-  props.professional.image || 
-  ''
-);
+// Computed para la URL de la imagen
+const imageUrl = computed(() => {
+  if (imageError.value || !formData.value.perfilPhoto) {
+    return defaultImage;
+  }
+  return formData.value.perfilPhoto;
+});
 
-// Opciones de prepagadas
-const prepaidOptions = [
-  'Axa Colpatria',
-  'Compensar',
-  'Seguros Bolivar',
-  'Sanitas',
-  'Sura',
-  'Nueva EPS',
-  'Coomeva',
-  'Famisanar'
-];
+// Watchers para actualizar el formulario cuando cambian las props
+watch(() => props.professional, (newVal) => {
+  if (newVal) {
+    formData.value = {
+      id: newVal.id || '',
+      names: newVal.names || '',
+      lastnames: newVal.lastnames || '',
+      email: newVal.email || '',
+      document: newVal.document || '',
+      phone: newVal.phone || '',
+      experience: newVal.experience || 0,
+      description: newVal.description || '',
+      perfilPhoto: newVal.perfilPhoto || '',
+      prepaidMedicine: newVal.prepaidMedicine || []
+    };
+    // Reset del error de imagen cuando se carga un nuevo profesional
+    imageError.value = false;
+  }
+});
 
 // Métodos
-function handleFileUpload(event: Event) {
+const handleImageError = () => {
+  imageError.value = true;
+};
+
+const handleImageUpload = async (event: Event) => {
   const target = event.target as HTMLInputElement;
   const file = target.files?.[0];
   
   if (file) {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      profileImageUrl.value = e.target?.result as string;
-      formData.value.profilePhoto = e.target?.result as string;
-    };
-    reader.readAsDataURL(file);
-  }
-}
-
-function addSpecialty() {
-  if (newSpecialty.value.trim()) {
-    if (!formData.value.specialties) {
-      formData.value.specialties = [];
+    // Validar tipo de archivo
+    if (!file.type.startsWith('image/')) {
+      alert('Por favor, selecciona una imagen válida');
+      return;
     }
-    formData.value.specialties.push(newSpecialty.value.trim());
-    newSpecialty.value = '';
-  }
-}
-
-function removeSpecialty(index: number) {
-  formData.value.specialties?.splice(index, 1);
-}
-
-function addPrepaid() {
-  if (selectedPrepaid.value && !formData.value.prepaidMedicine?.includes(selectedPrepaid.value)) {
-    if (!formData.value.prepaidMedicine) {
-      formData.value.prepaidMedicine = [];
+    
+    // Validar tamaño (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('La imagen no debe superar los 5MB');
+      return;
     }
-    formData.value.prepaidMedicine.push(selectedPrepaid.value);
-    selectedPrepaid.value = '';
+    
+    try {
+      // Aquí iría la lógica para subir la imagen
+      // Por ahora solo simulamos con un FileReader
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        formData.value.perfilPhoto = e.target?.result as string;
+        imageError.value = false;
+      };
+      reader.readAsDataURL(file);
+    } catch (error) {
+      console.error('Error al cargar la imagen:', error);
+      alert('Error al cargar la imagen');
+    }
   }
-}
+};
 
-function removePrepaid(prepaid: string) {
-  const index = formData.value.prepaidMedicine?.indexOf(prepaid);
-  if (index !== undefined && index > -1) {
-    formData.value.prepaidMedicine?.splice(index, 1);
+const restrictToInteger = (event: Event) => {
+  const input = event.target as HTMLInputElement;
+  let value = input.value;
+  
+  // Eliminar caracteres no numéricos
+  value = value.replace(/[^0-9]/g, '');
+  
+  // Convertir a número y actualizar
+  formData.value.experience = value ? parseInt(value, 10) : 0;
+  
+  // Actualizar el campo de entrada
+  input.value = formData.value.experience.toString();
+};
+
+const save = () => {
+  // Validaciones básicas
+  if (!formData.value.names || !formData.value.lastnames) {
+    alert('Por favor, completa todos los campos obligatorios');
+    return;
   }
-}
-
-function addOffice() {
-  // Lógica para agregar consultorio
-  if (!formData.value.offices) {
-    formData.value.offices = [];
-  }
-  formData.value.offices.push({
-    id: Date.now(),
-    description: 'Nuevo Consultorio',
-    address: 'Cl. 140 #10 A 61, Bogotá, Colombia'
-  });
-}
-
-function removeOffice(index: number) {
-  formData.value.offices?.splice(index, 1);
-}
-
-function downloadPDF() {
-  // Lógica para descargar PDF
-  window.open('/api/professionals/pdf/' + props.professional.id, '_blank');
-}
-
-function saveChanges() {
+  
   emit('save', formData.value);
-}
+};
 
-function close() {
+const close = () => {
   emit('close');
-}
+};
 </script>
 
 <template>
-  <div class="bg-white rounded-lg h-full flex flex-col">
-    <!-- Header -->
-    <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-      <h2 class="text-xl font-semibold text-gray-800">Perfil del Profesional</h2>
-      <div class="flex gap-3">
-        <button 
-          @click="downloadPDF"
-          class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
-        >
-          Descargar PDF instructivo crear perfil
-        </button>
+  <div v-if="showModal" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg shadow-xl w-[90%] md:w-[70%] lg:w-[60%] max-h-[90vh] overflow-y-auto">
+      <!-- Header -->
+      <div class="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
+        <h2 class="text-xl font-semibold text-gray-800">
+          Editar Perfil Profesional
+        </h2>
         <button 
           @click="close"
-          class="text-gray-500 hover:text-gray-700"
+          class="text-gray-500 hover:text-gray-700 transition-colors"
         >
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
       </div>
-    </div>
-    
-    <!-- Body - Scrollable -->
-    <div class="flex-1 overflow-y-auto px-6 py-4">
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <!-- Columna Izquierda -->
-        <div class="space-y-4">
-          <!-- Nombres -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Nombres</label>
-            <input 
-              v-model="formData.names"
-              type="text" 
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-            >
-          </div>
-          
-          <!-- Apellidos -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Apellidos</label>
-            <input 
-              v-model="formData.lastnames"
-              type="text" 
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-            >
-          </div>
-          
-          <!-- Correo electrónico -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Correo electrónico</label>
-            <input 
-              v-model="formData.email"
-              type="email" 
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-            >
-          </div>
-          
-          <!-- Cédula -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Cédula</label>
-            <input 
-              v-model="formData.document"
-              type="text" 
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-              :placeholder="!formData.document ? '93386028' : ''"
-            >
-          </div>
-          
-          <!-- Teléfono -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Celular</label>
-            <input 
-              v-model="formData.phone"
-              type="text" 
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-              :placeholder="!formData.phone ? '3123456789' : ''"
-            >
-          </div>
-          
-          <!-- Foto de Perfil -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Foto de Perfil</label>
-            <div class="flex items-center gap-4">
-              <div class="w-24 h-24 rounded-full overflow-hidden bg-gray-100 border-2 border-gray-300">
-                <img 
-                  v-if="profileImageUrl"
-                  :src="profileImageUrl" 
-                  alt="Perfil"
-                  class="w-full h-full object-cover"
-                  @error="handleImageError"
-                >
-                <div v-else class="w-full h-full flex items-center justify-center">
-                  <svg class="w-12 h-12 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"/>
-                  </svg>
-                </div>
-              </div>
-              <label class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg cursor-pointer transition-colors">
-                Añadir Foto
-                <input 
-                  type="file" 
-                  accept="image/*"
-                  class="hidden"
-                  @change="handleFileUpload"
-                >
-              </label>
-            </div>
+
+      <!-- Body -->
+      <div class="px-6 py-4">
+        <!-- Foto de perfil -->
+        <div class="flex flex-col items-center mb-6">
+          <div class="relative w-32 h-32 mb-4">
+            <img 
+              :src="imageUrl"
+              @error="handleImageError"
+              alt="Foto de perfil"
+              class="w-full h-full rounded-full object-cover border-4 border-gray-200"
+            />
+            <label class="absolute bottom-0 right-0 bg-blue-500 rounded-full p-2 cursor-pointer hover:bg-blue-600 transition-colors">
+              <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              <input 
+                type="file" 
+                @change="handleImageUpload"
+                accept="image/*"
+                class="hidden"
+              />
+            </label>
           </div>
         </div>
-        
-        <!-- Columna Derecha -->
-        <div class="space-y-4">
-          <!-- Años de experiencia -->
+
+        <!-- Formulario -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Nombres -->
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Años de experiencia</label>
+            <label class="block text-sm font-medium text-gray-700 mb-1">
+              Nombres *
+            </label>
             <input 
-              v-model.number="formData.experience"
-              type="number" 
-              min="0"
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-            >
+              v-model="formData.names"
+              type="text"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Ingrese nombres"
+            />
           </div>
-          
-          <!-- Principales campos de acción -->
+
+          <!-- Apellidos -->
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Principales campos de acción</label>
-            <div class="flex gap-2">
-              <input 
-                v-model="newSpecialty"
-                type="text" 
-                placeholder="Escribe una acción..."
-                class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-                @keyup.enter="addSpecialty"
-              >
-              <button 
-                @click="addSpecialty"
-                class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors"
-              >
-                Agregar
-              </button>
-            </div>
-            
-            <!-- Lista de especialidades con opción de eliminar -->
-            <div class="mt-2 space-y-1">
-              <!-- Especialidades agregadas dinámicamente -->
-              <div 
-                v-for="(specialty, index) in formData.specialties" 
-                :key="'new-' + index"
-                class="flex items-center justify-between bg-gray-100 px-3 py-2 rounded-lg"
-              >
-                <span class="text-sm">{{ specialty }}</span>
-                <button 
-                  @click="removeSpecialty(index)"
-                  class="text-red-500 hover:text-red-700"
-                >
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                  </svg>
-                </button>
-              </div>
-              
-              <!-- Si no hay especialidades, mostrar las por defecto con opción de eliminar -->
-              <div v-if="formData.specialties.length === 0" class="space-y-1">
-                <div class="flex items-center justify-between bg-gray-100 px-3 py-2 rounded-lg">
-                  <span class="text-sm">Retina</span>
-                  <button class="text-red-500 hover:text-red-700">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                    </svg>
-                  </button>
-                </div>
-                <div class="flex items-center justify-between bg-gray-100 px-3 py-2 rounded-lg">
-                  <span class="text-sm">Glaucoma</span>
-                  <button class="text-red-500 hover:text-red-700">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                    </svg>
-                  </button>
-                </div>
-              </div>
-            </div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">
+              Apellidos *
+            </label>
+            <input 
+              v-model="formData.lastnames"
+              type="text"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Ingrese apellidos"
+            />
           </div>
-          
-          <!-- Ubicación Consultorio -->
+
+          <!-- Email -->
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Ubicación Consultorio</label>
-            <button 
-              @click="addOffice"
-              class="w-full bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors"
-            >
-              Nuevo consultorio
-            </button>
-            
-            <!-- Lista de consultorios -->
-            <div class="mt-2 space-y-2">
-              <div 
-                v-for="(office, index) in formData.offices" 
+            <label class="block text-sm font-medium text-gray-700 mb-1">
+              Correo Electrónico
+            </label>
+            <input 
+              v-model="formData.email"
+              type="email"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="correo@ejemplo.com"
+            />
+          </div>
+
+          <!-- Documento -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">
+              Documento
+            </label>
+            <input 
+              v-model="formData.document"
+              type="text"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Número de documento"
+            />
+          </div>
+
+          <!-- Teléfono -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">
+              Teléfono
+            </label>
+            <input 
+              v-model="formData.phone"
+              type="tel"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Número de teléfono"
+            />
+          </div>
+
+          <!-- Experiencia -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">
+              Años de Experiencia
+            </label>
+            <input 
+              :value="formData.experience"
+              @input="restrictToInteger"
+              type="text"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="0"
+            />
+          </div>
+
+          <!-- Descripción -->
+          <div class="md:col-span-2">
+            <label class="block text-sm font-medium text-gray-700 mb-1">
+              Descripción
+            </label>
+            <textarea 
+              v-model="formData.description"
+              rows="4"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Descripción profesional..."
+            />
+          </div>
+
+          <!-- Medicina Prepagada -->
+          <div class="md:col-span-2">
+            <label class="block text-sm font-medium text-gray-700 mb-1">
+              Medicina Prepagada
+            </label>
+            <div class="flex flex-wrap gap-2">
+              <span 
+                v-for="(item, index) in formData.prepaidMedicine" 
                 :key="index"
-                class="bg-gray-100 p-3 rounded-lg"
+                class="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800"
               >
-                <p class="text-sm font-medium">{{ office.description }}</p>
-                <p class="text-xs text-gray-600">{{ office.address }}</p>
-                <button 
-                  @click="removeOffice(index)"
-                  class="text-red-500 hover:text-red-700 text-xs mt-1"
-                >
-                  Eliminar
-                </button>
-              </div>
-              <!-- Mostrar consultorio por defecto si no hay ninguno -->
-              <div v-if="formData.offices.length === 0" class="bg-gray-100 p-3 rounded-lg">
-                <p class="text-sm font-medium">Cedritos</p>
-                <p class="text-xs text-gray-600">Cl. 140 #10 A 61, Bogotá, Colombia</p>
-              </div>
-            </div>
-          </div>
-          
-          <!-- Convenios o prepagadas -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Convenios o prepagadas</label>
-            <select 
-              v-model="selectedPrepaid"
-              @change="addPrepaid"
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-            >
-              <option value="">Seleccione una opción</option>
-              <option 
-                v-for="option in prepaidOptions" 
-                :key="option"
-                :value="option"
-                :disabled="formData.prepaidMedicine?.includes(option)"
-              >
-                {{ option }}
-              </option>
-            </select>
-            
-            <!-- Lista de prepagadas seleccionadas -->
-            <div class="mt-2 flex flex-wrap gap-2">
-              <div 
-                v-for="prepaid in formData.prepaidMedicine" 
-                :key="prepaid"
-                class="bg-blue-500 text-white px-3 py-1 rounded-full flex items-center gap-2"
-              >
-                <span class="text-sm">{{ prepaid }}</span>
-                <button 
-                  @click="removePrepaid(prepaid)"
-                  class="text-white hover:text-red-200"
-                >
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                  </svg>
-                </button>
-              </div>
-              <!-- Mostrar prepagadas por defecto -->
-              <div v-if="formData.prepaidMedicine.length === 0" class="flex flex-wrap gap-2">
-                <div class="bg-blue-500 text-white px-3 py-1 rounded-full flex items-center gap-2">
-                  <span class="text-sm">Axa Colpatria</span>
-                  <span class="text-white">✕</span>
-                </div>
-                <div class="bg-blue-500 text-white px-3 py-1 rounded-full flex items-center gap-2">
-                  <span class="text-sm">Compensar</span>
-                  <span class="text-white">✕</span>
-                </div>
-                <div class="bg-blue-500 text-white px-3 py-1 rounded-full flex items-center gap-2">
-                  <span class="text-sm">Seguros Bolivar</span>
-                  <span class="text-white">✕</span>
-                </div>
-              </div>
+                {{ item }}
+              </span>
+              <span v-if="!formData.prepaidMedicine?.length" class="text-gray-500 text-sm">
+                No hay medicina prepagada registrada
+              </span>
             </div>
           </div>
         </div>
       </div>
-    </div>
-    
-    <!-- Footer -->
-    <div class="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
-      <button 
-        @click="close"
-        class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-      >
-        Cancelar
-      </button>
-      <button 
-        @click="saveChanges"
-        class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors"
-      >
-        Guardar Cambios
-      </button>
+
+      <!-- Footer -->
+      <div class="sticky bottom-0 bg-white border-t px-6 py-4 flex justify-end gap-3">
+        <button 
+          @click="close"
+          class="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 transition-colors"
+        >
+          Cancelar
+        </button>
+        <button 
+          @click="save"
+          class="px-4 py-2 text-white bg-blue-500 rounded-md hover:bg-blue-600 transition-colors"
+        >
+          Guardar Cambios
+        </button>
+      </div>
     </div>
   </div>
 </template>
+
+<style scoped>
+/* Animación de entrada para el modal */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.fixed > div {
+  animation: fadeIn 0.2s ease-out;
+}
+</style>
