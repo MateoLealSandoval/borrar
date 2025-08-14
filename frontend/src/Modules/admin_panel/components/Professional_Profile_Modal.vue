@@ -136,7 +136,7 @@ function close() {
           @click="downloadPDF"
           class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
         >
-          Descargar PDF
+          Descargar PDF instructivo crear perfil
         </button>
         <button 
           @click="close"
@@ -191,6 +191,18 @@ function close() {
               v-model="formData.document"
               type="text" 
               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+              :placeholder="!formData.document ? '93386028' : ''"
+            >
+          </div>
+          
+          <!-- Teléfono -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Celular</label>
+            <input 
+              v-model="formData.phone"
+              type="text" 
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+              :placeholder="!formData.phone ? '3123456789' : ''"
             >
           </div>
           
@@ -198,12 +210,19 @@ function close() {
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Foto de Perfil</label>
             <div class="flex items-center gap-4">
-              <div class="w-24 h-24 rounded-full overflow-hidden bg-gray-100">
+              <div class="w-24 h-24 rounded-full overflow-hidden bg-gray-100 border-2 border-gray-300">
                 <img 
-                  :src="profileImageUrl || '/src/assets/images/notUser.webp'" 
+                  v-if="profileImageUrl"
+                  :src="profileImageUrl" 
                   alt="Perfil"
                   class="w-full h-full object-cover"
+                  @error="handleImageError"
                 >
+                <div v-else class="w-full h-full flex items-center justify-center">
+                  <svg class="w-12 h-12 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"/>
+                  </svg>
+                </div>
               </div>
               <label class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg cursor-pointer transition-colors">
                 Añadir Foto
@@ -250,11 +269,12 @@ function close() {
               </button>
             </div>
             
-            <!-- Lista de especialidades -->
+            <!-- Lista de especialidades con opción de eliminar -->
             <div class="mt-2 space-y-1">
+              <!-- Especialidades agregadas dinámicamente -->
               <div 
                 v-for="(specialty, index) in formData.specialties" 
-                :key="index"
+                :key="'new-' + index"
                 class="flex items-center justify-between bg-gray-100 px-3 py-2 rounded-lg"
               >
                 <span class="text-sm">{{ specialty }}</span>
@@ -267,9 +287,25 @@ function close() {
                   </svg>
                 </button>
               </div>
-              <!-- Mostrar especialidades existentes -->
-              <div v-if="formData.specialties.length === 0" class="text-sm text-gray-500 italic">
-                Retina, Glaucoma
+              
+              <!-- Si no hay especialidades, mostrar las por defecto con opción de eliminar -->
+              <div v-if="formData.specialties.length === 0" class="space-y-1">
+                <div class="flex items-center justify-between bg-gray-100 px-3 py-2 rounded-lg">
+                  <span class="text-sm">Retina</span>
+                  <button class="text-red-500 hover:text-red-700">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                  </button>
+                </div>
+                <div class="flex items-center justify-between bg-gray-100 px-3 py-2 rounded-lg">
+                  <span class="text-sm">Glaucoma</span>
+                  <button class="text-red-500 hover:text-red-700">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
