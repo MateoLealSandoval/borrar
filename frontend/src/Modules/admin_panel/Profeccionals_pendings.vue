@@ -68,7 +68,6 @@ const statusOptions: { value: StatusType; label: string }[] = [
 
 const panels = ref({
     viewDocuments: false,
-    editModal: false,
     viewProfile: false,
 });
 
@@ -185,90 +184,102 @@ const updateProfessional = async () => {
         });
     }
 };
+
+// Función para cerrar modal de documentos
+const closeDocumentsModal = () => {
+    panels.value.viewDocuments = false;
+    selectItem.value = null;
+};
+
+// Función para cerrar modal de perfil
+const closeProfileModal = () => {
+    panels.value.viewProfile = false;
+    selectItem.value = null;
+};
 </script>
 
 <template>
     <!-- Modal Ver Documentos -->
-    <modal_Float v-if="panels.viewDocuments && selectItem" @close="panels.viewDocuments = false">
-        <template v-slot:modal>
-            <div class="bg-white p-6 rounded-lg shadow-lg max-h-[80vh] overflow-auto">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-xl font-bold">Documentos del Profesional</h2>
-                    <img :src="iconClose" alt="close" @click="panels.viewDocuments = false"
-                        class="w-6 h-6 cursor-pointer" />
-                </div>
-                <Documents_panel :data="selectItem" />
+    <div v-if="panels.viewDocuments && selectItem" 
+        class="fixed inset-0 bg-black/80 flex items-center justify-center z-50"
+        @click.self="closeDocumentsModal">
+        <div class="bg-white p-6 rounded-lg shadow-lg w-[90%] md:w-[80%] max-w-6xl max-h-[90vh] overflow-auto relative">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold">Documentos del Profesional</h2>
+                <img :src="iconClose" alt="close" @click="closeDocumentsModal"
+                    class="w-8 h-8 cursor-pointer hover:opacity-80 transition-opacity" />
             </div>
-        </template>
-    </modal_Float>
+            <Documents_panel :data="selectItem" />
+        </div>
+    </div>
 
     <!-- Modal Ver/Editar Perfil -->
-    <modal_Float v-if="panels.viewProfile && selectItem" @close="panels.viewProfile = false">
-        <template v-slot:modal>
-            <div class="bg-white p-6 rounded-lg shadow-lg w-[600px] max-h-[80vh] overflow-auto">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-xl font-bold">Perfil del Profesional</h2>
-                    <img :src="iconClose" alt="close" @click="panels.viewProfile = false"
-                        class="w-6 h-6 cursor-pointer" />
+    <div v-if="panels.viewProfile && selectItem" 
+        class="fixed inset-0 bg-black/80 flex items-center justify-center z-50"
+        @click.self="closeProfileModal">
+        <div class="bg-white p-6 rounded-lg shadow-lg w-[90%] md:w-[600px] max-h-[90vh] overflow-auto relative">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold">Perfil del Profesional</h2>
+                <img :src="iconClose" alt="close" @click="closeProfileModal"
+                    class="w-8 h-8 cursor-pointer hover:opacity-80 transition-opacity" />
+            </div>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Nombres</label>
+                    <input v-model="selectItem.names" type="text"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-[var(--blue-1)] focus:ring-1 focus:ring-[var(--blue-1)]">
                 </div>
                 
-                <div class="space-y-4">
-                    <div>
-                        <label class="block text-sm font-medium mb-1">Nombres</label>
-                        <input v-model="selectItem.names" type="text"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-[var(--blue-1)]">
-                    </div>
-                    
-                    <div>
-                        <label class="block text-sm font-medium mb-1">Apellidos</label>
-                        <input v-model="selectItem.lastnames" type="text"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-[var(--blue-1)]">
-                    </div>
-                    
-                    <div>
-                        <label class="block text-sm font-medium mb-1">Correo electrónico</label>
-                        <input v-model="selectItem.email" type="email"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-[var(--blue-1)]">
-                    </div>
-                    
-                    <div>
-                        <label class="block text-sm font-medium mb-1">Teléfono</label>
-                        <input v-model="selectItem.phone" type="text"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-[var(--blue-1)]">
-                    </div>
-                    
-                    <div>
-                        <label class="block text-sm font-medium mb-1">Documento</label>
-                        <input v-model="selectItem.document" type="text"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-[var(--blue-1)]">
-                    </div>
-                    
-                    <div>
-                        <label class="block text-sm font-medium mb-1">Estado</label>
-                        <input :value="selectItem.status" type="text" disabled
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100">
-                    </div>
-                    
-                    <div>
-                        <label class="block text-sm font-medium mb-1">Fecha de registro</label>
-                        <input :value="formatDate(selectItem.createdAt)" type="text" disabled
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100">
-                    </div>
-                    
-                    <div class="flex justify-end gap-3 pt-4">
-                        <button @click="panels.viewProfile = false"
-                            class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400">
-                            Cancelar
-                        </button>
-                        <button @click="updateProfessional"
-                            class="px-4 py-2 bg-[var(--blue-1)] text-white rounded-md hover:bg-opacity-90">
-                            Guardar cambios
-                        </button>
-                    </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Apellidos</label>
+                    <input v-model="selectItem.lastnames" type="text"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-[var(--blue-1)] focus:ring-1 focus:ring-[var(--blue-1)]">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Correo electrónico</label>
+                    <input v-model="selectItem.email" type="email"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-[var(--blue-1)] focus:ring-1 focus:ring-[var(--blue-1)]">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
+                    <input v-model="selectItem.phone" type="text"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-[var(--blue-1)] focus:ring-1 focus:ring-[var(--blue-1)]">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Documento</label>
+                    <input v-model="selectItem.document" type="text"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-[var(--blue-1)] focus:ring-1 focus:ring-[var(--blue-1)]">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Estado</label>
+                    <input :value="selectItem.status" type="text" disabled
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 cursor-not-allowed">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Fecha de registro</label>
+                    <input :value="formatDate(selectItem.createdAt)" type="text" disabled
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 cursor-not-allowed">
+                </div>
+                
+                <div class="flex justify-end gap-3 pt-4 border-t">
+                    <button @click="closeProfileModal"
+                        class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors">
+                        Cancelar
+                    </button>
+                    <button @click="updateProfessional"
+                        class="px-4 py-2 bg-[var(--blue-1)] text-white rounded-md hover:opacity-90 transition-opacity">
+                        Guardar cambios
+                    </button>
                 </div>
             </div>
-        </template>
-    </modal_Float>
+        </div>
+    </div>
 
     <!-- Contenido principal -->
     <div class="h-screen bg-gray-100">
@@ -297,19 +308,19 @@ const updateProfessional = async () => {
                         </select>
                         
                         <button @click="downloadExcel"
-                            class="flex items-center gap-2 px-4 py-2 bg-[var(--blue-1)] text-white rounded-lg hover:bg-opacity-90"
+                            class="flex items-center gap-2 px-4 py-2 bg-[var(--blue-1)] text-white rounded-lg hover:opacity-90 transition-opacity"
                             v-tooltip="'Descargar BD de pendientes'">
                             <img :src="excelIcon" alt="excel" class="w-5 h-5" />
-                            <span>Descargar BD</span>
+                            <span class="hidden sm:inline">Descargar BD</span>
                         </button>
                     </div>
                 </div>
             </div>
 
-            <!-- Tabla -->
-            <div class="overflow-x-auto">
+            <!-- Tabla con scroll -->
+            <div class="overflow-x-auto" style="max-height: calc(100vh - 220px);">
                 <table class="min-w-full bg-white">
-                    <thead class="bg-gray-50">
+                    <thead class="bg-gray-50 sticky top-0">
                         <tr>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 Nombre
@@ -327,7 +338,7 @@ const updateProfessional = async () => {
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
                         <tr v-for="user in filteredUsers" :key="user.id" 
-                            class="hover:bg-gray-50"
+                            class="hover:bg-gray-50 transition-colors"
                             :class="{ 'bg-green-50': user.status === 'ACCEPTED' }">
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <div class="text-sm font-medium text-gray-900">
@@ -357,7 +368,7 @@ const updateProfessional = async () => {
                                     <button @click="() => { 
                                         panels.viewDocuments = false; 
                                         panels.viewProfile = true; 
-                                        selectItem = user 
+                                        selectItem = {...user} 
                                     }"
                                         class="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
                                         v-tooltip="'Ver/Editar perfil'">
@@ -386,9 +397,16 @@ const updateProfessional = async () => {
             </div>
 
             <!-- Paginación -->
-            <div class="flex justify-center py-4 border-t">
+            <div class="flex justify-center py-4 border-t bg-white">
                 <paginadeComponent v-if="meta" :meta="meta" @change-page="adminProfessioanlStore.goToPage" />
             </div>
         </div>
     </div>
 </template>
+
+<style scoped>
+/* Asegurar que los modales estén por encima de todo */
+.fixed {
+    z-index: 9999;
+}
+</style>
