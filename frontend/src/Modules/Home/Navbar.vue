@@ -163,7 +163,7 @@ onBeforeUnmount(() => {
               </a>
             </div>
 
-            <!-- Acceso a Especialistas -->
+            <!-- Acceso a especialistas -->
             <div class="flex gap-3" @click="toggle_specialistMovile">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
                 stroke="currentColor" class="size-6"
@@ -173,7 +173,7 @@ onBeforeUnmount(() => {
               </svg>
               <a class="cursor-pointer font-poppins font-semibold text-md text-black hover:text-[var(--blue-1)]"
                 :style="{ color: open_specialistMovile ? 'var(--blue-1)' : 'black' }">
-                Acceso a Especialistas
+                Acceso a especialistas
               </a>
             </div>
 
@@ -268,11 +268,11 @@ onBeforeUnmount(() => {
             Home
           </a>
 
-          <!-- Acceso a Especialistas -->
+          <!-- Acceso a especialistas -->
           <div class="relative inline-block" ref="specialistRef">
             <a class="text-black text-sm cursor-pointer px-2 py-2 font-poppins font-semibold md:text-md transition-colors duration-300 transform rounded-lg hover:!text-[#8dd5ff]"
               @click="toggle_specialist">
-              Acceso a Especialistas
+              Acceso a especialistas
             </a>
             <div v-if="open_specialist"
               class="absolute left-0 min-w-[150px] max-w-[200px] mt-2 bg-white border border-gray-300 shadow-lg rounded-lg z-10">
@@ -331,11 +331,31 @@ onBeforeUnmount(() => {
           <a class="text-sm cursor-pointer px-2 py-1 font-poppins font-semibold md:text-md text-black transition-colors duration-300 transform rounded-lg hover:!text-[#5f9fd5]"
             @click="goToAbout('/questions')"
             :style="{ color: currentRoute === '/questions' ? 'var(--blue-1)' : 'black' }">
-            Preguntas frecuentes
+            Preguntas
+          </a>
+
+          <!-- Quienes somos -->
+          <a class="text-sm cursor-pointer px-2 py-1 font-poppins font-semibold md:text-md text-black transition-colors duration-300 transform rounded-lg hover:!text-[#5f9fd5]"
+            @click="goToAbout('/about_us')"
+            :style="{ color: currentRoute === '/about_us' ? 'var(--blue-1)' : 'black' }">
+            ¿Quiénes somos?
           </a>
 
         </div>
       </div>
+
     </div>
   </nav>
 </template>
+
+<style scoped>
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+</style>
