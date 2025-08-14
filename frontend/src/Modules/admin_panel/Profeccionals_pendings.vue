@@ -25,7 +25,6 @@ import Documents_panel from './components/documents_panel.vue';
 
 const adminProfessioanlStore = store_admin_pendings()
 const type = ref<StatusType>('PENDING')
-const searchQuery = ref('')
 
 onMounted(() => {
     adminProfessioanlStore.get_all_users(type.value);
@@ -35,20 +34,7 @@ onUnmounted(() => {
     adminProfessioanlStore.reset();
 });
 
-const all_users = computed(() => {
-    const users = adminProfessioanlStore.users || [];
-    
-    if (!searchQuery.value) return users;
-    
-    const search = searchQuery.value.toLowerCase();
-    return users.filter(user => 
-        user.names?.toLowerCase().includes(search) ||
-        user.lastnames?.toLowerCase().includes(search) ||
-        user.email?.toLowerCase().includes(search) ||
-        user.document?.toLowerCase().includes(search)
-    );
-});
-
+const all_users = computed(() => adminProfessioanlStore.users || null);
 const meta = computed(() => adminProfessioanlStore.meta || null);
 
 function formatDate(fechaIso: string): string {
@@ -78,8 +64,8 @@ watch(type, (newValue) => {
     }
 });
 
-// Función para descargar Excel
-async function downloadExcel() {
+// Función para descargar Excel - IGUAL que en Bulleting
+async function dowloadExcel() {
     try {
         const response = await axios.post('/auth-pending/excel', { status: type.value }, {
             responseType: 'blob',
@@ -91,7 +77,7 @@ async function downloadExcel() {
 
         const link = document.createElement('a');
         link.href = url;
-        link.setAttribute('download', `profesionales_pendientes.xlsx`);
+        link.setAttribute('download', 'profesionales_pendientes.xlsx');
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -138,219 +124,197 @@ const approve = async (data: userPendingsDto) => {
     }
 };
 
-// Función para actualizar el item seleccionado
+// Función para actualizar - IGUAL que en Bulleting
 const update_item = async () => {
     try {
-        if (selectItem.value) {
-            await axios.put(`/auth-pending/${selectItem.value.id}`, {
-                names: selectItem.value.names,
-                lastnames: selectItem.value.lastnames,
-                email: selectItem.value.email,
-                phone: selectItem.value.phone,
-                document: selectItem.value.document
-            });
-
+        if (selectItem) {
+            await axios.put(`/auth-pending/${selectItem.value?.id}`, {
+                names: selectItem.value?.names,
+                lastnames: selectItem.value?.lastnames,
+                email: selectItem.value?.email,
+                phone: selectItem.value?.phone,
+                document: selectItem.value?.document
+            })
+            
             Swal.fire({
                 title: "¡Éxito!",
                 text: "El profesional ha sido actualizado correctamente.",
                 icon: "success",
                 confirmButtonColor: "var(--blue-1)"
             });
-
+            
             selectItem.value = null;
-            panels.value.editModal = false;
             adminProfessioanlStore.get_all_users(type.value);
         }
     } catch (error) {
-        console.error("Error al actualizar:", error);
+        let message = "Ocurrió un error inesperado.";
+
+        if (axios.isAxiosError(error)) {
+            message = error.response?.data?.message || error.message;
+        } else if (error instanceof Error) {
+            message = error.message;
+        }
+
         Swal.fire({
             title: "Error",
-            text: "No se pudo actualizar el profesional.",
+            text: message,
             icon: "error",
             confirmButtonColor: "var(--blue-1)"
         });
     }
-};
+}
 </script>
 
 <template>
-    <!-- Modal Ver Documentos -->
+    <!-- Modal Ver Documentos - IGUAL estructura que Bulleting -->
     <modal_Float :model-value="panels.viewDocuments && selectItem != null" 
         :width-percent="90" 
         :height-percent="90"
         @click-outside="() => { panels.viewDocuments = false; selectItem = null }" 
         v-if="panels.viewDocuments && selectItem">
-        <Documents_panel :data="selectItem" />
+        <div class="w-[98%] h-full flex flex-col">
+            <div class="w-full">
+                <img :src="iconClose" alt="close" class="ml-auto cursor-pointer" 
+                    @click="() => { panels.viewDocuments = false; selectItem = null }" />
+            </div>
+            <div class="w-[95%] m-auto my-2 flex-grow overflow-auto">
+                <Documents_panel :data="selectItem" />
+            </div>
+        </div>
     </modal_Float>
 
-    <!-- Modal Ver/Editar Perfil -->
-    <modal_Float :model-value="panels.editModal && selectItem != null" 
+    <!-- Modal Ver/Editar - EXACTAMENTE como Bulleting -->
+    <modal_Float :model-value="selectItem != null && panels.editModal" 
         :width-percent="80" 
         :height-percent="80"
-        @click-outside="() => { panels.editModal = false; selectItem = null }" 
-        v-if="panels.editModal && selectItem">
-        <div class="w-[98%] h-full flex flex-col bg-white rounded-lg p-6">
-            <div class="w-full flex justify-between items-center mb-4">
-                <h2 class="text-xl font-bold">Perfil del Profesional</h2>
-                <img :src="iconClose" alt="close" 
-                    class="w-6 h-6 cursor-pointer" 
-                    @click="() => { panels.editModal = false; selectItem = null }" />
+        @click-outside="() => { selectItem = null; panels.editModal = false }" 
+        v-if="selectItem && panels.editModal">
+        <div class="w-[98%] h-full flex flex-col">
+            <div class="w-full">
+                <img :src="iconClose" alt="close" class="ml-auto cursor-pointer" 
+                    @click="() => { selectItem = null; panels.editModal = false }" />
             </div>
-            
-            <div class="w-[90%] m-auto my-2 flex-grow overflow-auto space-y-4">
-                <div>
-                    <h1 class="font-semibold text-black text-lg mb-1">Nombres</h1>
-                    <input v-model="selectItem.names" type="text" 
-                        placeholder="Nombres"
-                        class="w-full p-2 rounded-md border border-gray-300 focus:border-[var(--blue-1)] focus:outline-none" />
-                </div>
+            <div class="w-[90%] m-auto my-2 flex-grow overflow-auto">
+                <!-- Nombres -->
+                <h1 class="font-semibold text-black text-2xl">Nombres</h1>
+                <input v-model="selectItem.names" type="text" placeholder="* Nombres" :class="[
+                    'w-full p-2 rounded-md border mb-6',
+                    selectItem.names?.trim() === '' ? 'border-red-400' : 'border-gray-300'
+                ]" />
                 
-                <div>
-                    <h1 class="font-semibold text-black text-lg mb-1">Apellidos</h1>
-                    <input v-model="selectItem.lastnames" type="text" 
-                        placeholder="Apellidos"
-                        class="w-full p-2 rounded-md border border-gray-300 focus:border-[var(--blue-1)] focus:outline-none" />
-                </div>
+                <!-- Apellidos -->
+                <h1 class="font-semibold text-black text-2xl">Apellidos</h1>
+                <input v-model="selectItem.lastnames" type="text" placeholder="* Apellidos" :class="[
+                    'w-full p-2 rounded-md border mb-6',
+                    selectItem.lastnames?.trim() === '' ? 'border-red-400' : 'border-gray-300'
+                ]" />
                 
-                <div>
-                    <h1 class="font-semibold text-black text-lg mb-1">Correo</h1>
-                    <input v-model="selectItem.email" type="email" 
-                        placeholder="Correo electrónico"
-                        class="w-full p-2 rounded-md border border-gray-300 focus:border-[var(--blue-1)] focus:outline-none" />
-                </div>
+                <!-- Correo -->
+                <h1 class="font-semibold text-black text-2xl">Correo</h1>
+                <input v-model="selectItem.email" type="text" placeholder="* Correo" :class="[
+                    'w-full p-2 rounded-md border mb-6',
+                    selectItem.email?.trim() === '' ? 'border-red-400' : 'border-gray-300'
+                ]" />
                 
-                <div>
-                    <h1 class="font-semibold text-black text-lg mb-1">Documento</h1>
-                    <input v-model="selectItem.document" type="text" 
-                        placeholder="Documento"
-                        class="w-full p-2 rounded-md border border-gray-300 focus:border-[var(--blue-1)] focus:outline-none" />
-                </div>
+                <!-- Documento -->
+                <h1 class="font-semibold text-black text-2xl">Documento</h1>
+                <input v-model="selectItem.document" type="text" placeholder="* Documento" :class="[
+                    'w-full p-2 rounded-md border mb-6',
+                    selectItem.document?.trim() === '' ? 'border-red-400' : 'border-gray-300'
+                ]" />
                 
-                <div>
-                    <h1 class="font-semibold text-black text-lg mb-1">Teléfono</h1>
-                    <input v-model="selectItem.phone" type="text" 
-                        placeholder="Teléfono"
-                        class="w-full p-2 rounded-md border border-gray-300 focus:border-[var(--blue-1)] focus:outline-none" />
-                </div>
-                
-                <div>
-                    <h1 class="font-semibold text-black text-lg mb-1">Estado</h1>
-                    <input :value="selectItem.status" type="text" 
-                        disabled
-                        class="w-full p-2 rounded-md border border-gray-300 bg-gray-100" />
-                </div>
-                
-                <div>
-                    <h1 class="font-semibold text-black text-lg mb-1">Fecha de registro</h1>
-                    <input :value="formatDate(selectItem.createdAt)" type="text" 
-                        disabled
-                        class="w-full p-2 rounded-md border border-gray-300 bg-gray-100" />
-                </div>
+                <!-- Teléfono -->
+                <h1 class="font-semibold text-black text-2xl">Teléfono</h1>
+                <input v-model="selectItem.phone" type="text" placeholder="* Teléfono" 
+                    class="w-full p-2 rounded-md border mb-6 border-gray-300" />
             </div>
-            
             <div @click="update_item"
-                class="w-[90%] mx-auto mb-4 bg-[var(--blue-1)] rounded-2xl mt-auto cursor-pointer hover:opacity-90">
+                class="w-[90%] mx-auto mb-4 bg-[var(--blue-1)] rounded-2xl mt-auto cursor-pointer">
                 <h1 class="py-3 text-center text-white font-semibold">Actualizar</h1>
             </div>
         </div>
     </modal_Float>
 
-    <!-- Contenido principal -->
-    <div class="w-full h-full bg-gray-100">
-        <!-- Header con título y controles -->
-        <div class="py-10 w-[90%] mx-auto flex justify-between items-center">
-            <h1>Bienvenido a Doc Visual Administrador</h1>
+    <!-- Contenido principal - EXACTAMENTE como users_registers -->
+    <div class="w-full bg-gray-100">
+        <h1 class="py-10 w-[90%] mx-auto">Bienvenido a Doc Visual Administrador</h1>
+        
+        <!-- Controles superiores -->
+        <div class="w-[90%] mx-auto mb-4 flex justify-between items-center">
+            <div class="flex gap-4">
+                <!-- Selector de estado -->
+                <select v-model="type"
+                    class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[var(--blue-1)]">
+                    <option v-for="option in statusOptions" :key="option.value" :value="option.value">
+                        {{ option.label }}
+                    </option>
+                </select>
+            </div>
             
-            <div class="flex items-center gap-4">
-                <!-- Buscador -->
-                <div class="flex items-center gap-2">
-                    <input 
-                        v-model="searchQuery"
-                        type="text" 
-                        placeholder="Buscar..."
-                        class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[var(--blue-1)]">
-                    
-                    <!-- Selector de estado -->
-                    <select v-model="type"
-                        class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[var(--blue-1)]">
-                        <option v-for="option in statusOptions" :key="option.value" :value="option.value">
-                            {{ option.label }}
-                        </option>
-                    </select>
-                </div>
-                
-                <!-- Botón descargar Excel -->
-                <div @click="downloadExcel" class="cursor-pointer">
-                    <img :src="excelIcon" alt="excel" class="mx-auto w-10 h-auto" />
-                    <h1 class="md:text-base text-[10px] text-center">Descargar datos</h1>
-                </div>
+            <!-- Botón descargar Excel - IGUAL que Bulleting -->
+            <div @click="dowloadExcel" class="mr-5 cursor-pointer">
+                <img :src="excelIcon" alt="excel" class="mx-auto w-10 h-auto" />
+                <h1 class="md:text-base text-[10px] text-center">Descargar datos</h1>
             </div>
         </div>
-
-        <!-- Tabla -->
-        <div class="w-[90%] mx-auto bg-white rounded-2xl shadow-gray-400 shadow-2xl" v-if="all_users">
-            <div class="min-h-[400px] w-full">
-                <table class="min-w-full bg-white shadow-md rounded-xl overflow-hidden">
-                    <thead class="bg-gray-200 text-gray-500 text-left">
-                        <tr>
-                            <th class="px-6 py-3">Nombre</th>
-                            <th class="px-6 py-3">Correo</th>
-                            <th class="px-6 py-3">Fecha inscripción</th>
-                            <th class="px-6 py-3">Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody class="w-full">
-                        <tr v-for="user in all_users" :key="user.id" 
-                            class="border-b hover:bg-gray-50"
-                            :class="{ 'bg-green-100': user.status === 'ACCEPTED' }">
-                            <td class="px-6 py-3">
-                                {{ user.names }} {{ user.lastnames }}
-                            </td>
-                            <td class="px-6 py-3">
-                                {{ user.email }}
-                            </td>
-                            <td class="px-6 py-3">
-                                {{ formatDate(user.createdAt) }}
-                            </td>
-                            <td class="px-6 py-3">
-                                <div class="flex gap-2">
-                                    <!-- Ver documentos -->
-                                    <img :src="icondatas" alt="documents" 
-                                        class="w-7 h-7 hover:cursor-pointer"
-                                        v-tooltip="'Ver documentos'"
-                                        @click="() => { 
-                                            panels.editModal = false; 
-                                            panels.viewDocuments = true; 
-                                            selectItem = user 
-                                        }" />
-                                    
-                                    <!-- Ver/Editar perfil -->
-                                    <img :src="iconedit" alt="edit view" 
-                                        class="w-7 h-7 hover:cursor-pointer"
-                                        v-tooltip="'Ver/Editar perfil'"
-                                        @click="() => { 
-                                            panels.viewDocuments = false; 
-                                            panels.editModal = true; 
-                                            selectItem = user 
-                                        }" />
-                                    
-                                    <!-- Aprobar perfil -->
-                                    <img v-if="user.status !== 'ACCEPTED'"
-                                        :src="icon_good" alt="aprovar" 
-                                        class="w-7 h-7 hover:cursor-pointer"
-                                        v-tooltip="'Aprobar perfil'" 
-                                        @click="approve(user)" />
-                                </div>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-            
-            <!-- Paginación -->
-            <div class="flex justify-center mt-4 pb-4">
-                <paginadeComponent v-if="meta" :meta="meta" @change-page="adminProfessioanlStore.goToPage" />
-            </div>
+        
+        <!-- Tabla - IGUAL estructura que users_registers -->
+        <div class="w-[90%] mx-auto bg-white rounded-2xl shadow-gray-300 shadow-2xl min-h-[500px]"
+            v-if="all_users && all_users.length">
+            <table class="min-w-full bg-white shadow-md rounded-xl overflow-hidden">
+                <thead class="bg-gray-100 text-gray-700 text-left">
+                    <tr>
+                        <th class="px-6 py-3">Nombre</th>
+                        <th class="px-6 py-3">Correo</th>
+                        <th class="px-6 py-3">Fecha inscripción</th>
+                        <th class="px-6 py-3">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="user in all_users" :key="user.id" 
+                        class="border-b hover:bg-gray-50"
+                        :class="{ 'bg-green-100': user.status === 'ACCEPTED' }">
+                        <td class="px-6 py-3">{{ user.names + " " + user.lastnames }}</td>
+                        <td class="px-6 py-3">{{ user.email }}</td>
+                        <td class="px-6 py-3">{{ formatDate(user.createdAt) }}</td>
+                        <td class="px-6 py-3">
+                            <div class="flex gap-2">
+                                <!-- Ver documentos -->
+                                <img :src="icondatas" alt="documents" 
+                                    class="w-7 h-7 hover:cursor-pointer"
+                                    v-tooltip="'Ver documentos'"
+                                    @click="() => { 
+                                        panels.editModal = false; 
+                                        panels.viewDocuments = true; 
+                                        selectItem = user 
+                                    }" />
+                                
+                                <!-- Ver/Editar perfil -->
+                                <img :src="iconedit" alt="edit view" 
+                                    class="w-7 h-7 hover:cursor-pointer"
+                                    v-tooltip="'Ver/Editar perfil'"
+                                    @click="() => { 
+                                        panels.viewDocuments = false; 
+                                        panels.editModal = true; 
+                                        selectItem = user 
+                                    }" />
+                                
+                                <!-- Aprobar perfil -->
+                                <img v-if="user.status !== 'ACCEPTED'"
+                                    :src="icon_good" alt="aprovar" 
+                                    class="w-7 h-7 hover:cursor-pointer"
+                                    v-tooltip="'Aprobar perfil'" 
+                                    @click="approve(user)" />
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Mensaje cuando no hay datos -->
+        <div v-else class="w-[90%] mx-auto bg-white rounded-2xl shadow-gray-300 shadow-2xl min-h-[500px] flex items-center justify-center">
+            <p class="text-gray-500">No se encontraron profesionales pendientes</p>
         </div>
     </div>
 </template>
