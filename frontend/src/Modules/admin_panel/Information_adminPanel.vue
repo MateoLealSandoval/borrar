@@ -7,9 +7,6 @@ const props = defineProps<{
 }>();
 const adminInformation = use_adminPanel_information();
 
-/** 
- * Todo import components
- * **/
 import itemInformation from './itemInformation.vue';
 import { AdminPanelOptionEnum } from './Admin_types_panels';
 
@@ -20,18 +17,18 @@ const shedules_datas_office = computed(() => adminInformation.informationdata ||
 </script>
 
 <template>
-  <div class="w-full bg-[#f5f5f5] min-h-screen" v-if="shedules_datas_office != null">
+  <div class="w-full bg-[#f8f9fa] min-h-screen" v-if="shedules_datas_office != null">
     <!-- Header -->
     <div class="bg-white px-8 py-5 border-b border-gray-200">
-      <h1 class="text-lg font-medium text-gray-700">
+      <h1 class="text-lg font-normal text-gray-700">
         Bienvenido a Doc Visual Administrador
       </h1>
     </div>
 
-    <!-- Dashboard Grid - 2 filas x 4 columnas -->
+    <!-- Dashboard Grid - 2 columnas en desktop, 1 en móvil -->
     <div class="px-8 py-6">
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <!-- Primera fila -->
+      <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        <!-- Columna izquierda -->
         <itemInformation 
           :icon="'professionals'" 
           :value="shedules_datas_office.numberProfessionals"
@@ -56,8 +53,6 @@ const shedules_datas_office = computed(() => adminInformation.informationdata ||
           :label="'Suscripciones'" 
           :gotoPanel="() => changePanel(AdminPanelOptionEnum.SUBSCRIPTIONS)"
         />
-        
-        <!-- Segunda fila -->
         <itemInformation 
           :icon="'rating'" 
           :value="shedules_datas_office.numberProfessionals"
@@ -92,7 +87,7 @@ const shedules_datas_office = computed(() => adminInformation.informationdata ||
   </div>
 
   <!-- Loading state -->
-  <div v-else class="w-full h-screen flex items-center justify-center bg-[#f5f5f5]">
+  <div v-else class="w-full h-screen flex items-center justify-center bg-[#f8f9fa]">
     <div class="text-center">
       <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--blue-1)] mx-auto"></div>
       <p class="mt-4 text-gray-600">Cargando información...</p>
