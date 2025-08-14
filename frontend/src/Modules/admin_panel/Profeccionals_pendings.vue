@@ -25,7 +25,7 @@ import Documents_panel from './components/documents_panel.vue';
 
 const adminProfessioanlStore = store_admin_pendings()
 const type = ref<StatusType>('PENDING')
-const searchTerm = ref('')
+const searchQuery = ref('')
 
 onMounted(() => {
     adminProfessioanlStore.get_all_users(type.value);
@@ -35,21 +35,21 @@ onUnmounted(() => {
     adminProfessioanlStore.reset();
 });
 
-const all_users = computed(() => adminProfessioanlStore.users || null);
-const meta = computed(() => adminProfessioanlStore.meta || null);
-
-// Función para filtrar usuarios
-const filteredUsers = computed(() => {
-    if (!all_users.value) return null;
-    if (!searchTerm.value) return all_users.value;
+const all_users = computed(() => {
+    const users = adminProfessioanlStore.users || [];
     
-    return all_users.value.filter(user => {
-        const search = searchTerm.value.toLowerCase();
-        return user.names?.toLowerCase().includes(search) ||
-               user.lastnames?.toLowerCase().includes(search) ||
-               user.email?.toLowerCase().includes(search);
-    });
+    if (!searchQuery.value) return users;
+    
+    const search = searchQuery.value.toLowerCase();
+    return users.filter(user => 
+        user.names?.toLowerCase().includes(search) ||
+        user.lastnames?.toLowerCase().includes(search) ||
+        user.email?.toLowerCase().includes(search) ||
+        user.document?.toLowerCase().includes(search)
+    );
 });
+
+const meta = computed(() => adminProfessioanlStore.meta || null);
 
 function formatDate(fechaIso: string): string {
     const fecha = new Date(fechaIso);
@@ -78,10 +78,10 @@ watch(type, (newValue) => {
     }
 });
 
-// Función para descargar Excel con todos los pendientes
+// Función para descargar Excel
 async function downloadExcel() {
     try {
-        const response = await axios.post('/auth-pending/excel', { status: 'PENDING' }, {
+        const response = await axios.post('/auth-pending/excel', { status: type.value }, {
             responseType: 'blob',
         });
         const blob = new Blob([response.data], { 
@@ -91,26 +91,13 @@ async function downloadExcel() {
 
         const link = document.createElement('a');
         link.href = url;
-        link.setAttribute('download', `profesionales_pendientes_${new Date().toISOString().split('T')[0]}.xlsx`);
+        link.setAttribute('download', `profesionales_pendientes.xlsx`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
         window.URL.revokeObjectURL(url);
-        
-        Swal.fire({
-            title: "¡Éxito!",
-            text: "Base de datos descargada correctamente.",
-            icon: "success",
-            confirmButtonColor: "var(--blue-1)"
-        });
     } catch (error) {
         console.error('Error al descargar el archivo:', error);
-        Swal.fire({
-            title: "Error",
-            text: "No se pudo descargar la base de datos.",
-            icon: "error",
-            confirmButtonColor: "var(--blue-1)"
-        });
     }
 }
 
@@ -129,7 +116,7 @@ const approve = async (data: userPendingsDto) => {
 
     if (result.isConfirmed) {
         try {
-            const response_axios = await axios.put(`/auth-pending/approve/${data.id}`)
+            await axios.put(`/auth-pending/approve/${data.id}`)
   
             Swal.fire({
                 title: "Aprobado",
@@ -138,7 +125,6 @@ const approve = async (data: userPendingsDto) => {
                 confirmButtonColor: "var(--blue-1)"
             });
 
-            // Actualizar la lista
             adminProfessioanlStore.get_all_users(type.value);
         } catch (error) {
             console.error("Error al aprobar:", error);
@@ -151,132 +137,182 @@ const approve = async (data: userPendingsDto) => {
         }
     }
 };
+
+// Función para actualizar el item seleccionado
+const update_item = async () => {
+    try {
+        if (selectItem.value) {
+            await axios.put(`/auth-pending/${selectItem.value.id}`, {
+                names: selectItem.value.names,
+                lastnames: selectItem.value.lastnames,
+                email: selectItem.value.email,
+                phone: selectItem.value.phone,
+                document: selectItem.value.document
+            });
+
+            Swal.fire({
+                title: "¡Éxito!",
+                text: "El profesional ha sido actualizado correctamente.",
+                icon: "success",
+                confirmButtonColor: "var(--blue-1)"
+            });
+
+            selectItem.value = null;
+            panels.value.editModal = false;
+            adminProfessioanlStore.get_all_users(type.value);
+        }
+    } catch (error) {
+        console.error("Error al actualizar:", error);
+        Swal.fire({
+            title: "Error",
+            text: "No se pudo actualizar el profesional.",
+            icon: "error",
+            confirmButtonColor: "var(--blue-1)"
+        });
+    }
+};
 </script>
 
 <template>
-    <!-- Modal Ver Documentos - Usando modal_Float como en el original -->
-    <modal_Float v-if="panels.viewDocuments && selectItem" @close="panels.viewDocuments = false">
-        <template v-slot:modal>
-            <Documents_panel :data="selectItem" />
-        </template>
+    <!-- Modal Ver Documentos -->
+    <modal_Float :model-value="panels.viewDocuments && selectItem != null" 
+        :width-percent="90" 
+        :height-percent="90"
+        @click-outside="() => { panels.viewDocuments = false; selectItem = null }" 
+        v-if="panels.viewDocuments && selectItem">
+        <Documents_panel :data="selectItem" />
     </modal_Float>
 
-    <!-- Modal Ver/Editar Perfil - Usando modal_Float como en el original -->
-    <modal_Float v-if="panels.editModal && selectItem" @close="panels.editModal = false">
-        <template v-slot:modal>
-            <div class="w-[90%] md:w-[600px] bg-white rounded-lg p-6">
-                <div class="flex justify-between items-center mb-6">
-                    <h2 class="text-xl font-bold">Perfil del Profesional</h2>
-                    <img :src="iconClose" alt="close" @click="panels.editModal = false"
-                        class="w-6 h-6 cursor-pointer" />
+    <!-- Modal Ver/Editar Perfil -->
+    <modal_Float :model-value="panels.editModal && selectItem != null" 
+        :width-percent="80" 
+        :height-percent="80"
+        @click-outside="() => { panels.editModal = false; selectItem = null }" 
+        v-if="panels.editModal && selectItem">
+        <div class="w-[98%] h-full flex flex-col bg-white rounded-lg p-6">
+            <div class="w-full flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold">Perfil del Profesional</h2>
+                <img :src="iconClose" alt="close" 
+                    class="w-6 h-6 cursor-pointer" 
+                    @click="() => { panels.editModal = false; selectItem = null }" />
+            </div>
+            
+            <div class="w-[90%] m-auto my-2 flex-grow overflow-auto space-y-4">
+                <div>
+                    <h1 class="font-semibold text-black text-lg mb-1">Nombres</h1>
+                    <input v-model="selectItem.names" type="text" 
+                        placeholder="Nombres"
+                        class="w-full p-2 rounded-md border border-gray-300 focus:border-[var(--blue-1)] focus:outline-none" />
                 </div>
                 
-                <div class="space-y-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Nombres</label>
-                        <input v-model="selectItem.names" type="text"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-[var(--blue-1)]">
-                    </div>
-                    
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Apellidos</label>
-                        <input v-model="selectItem.lastnames" type="text"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-[var(--blue-1)]">
-                    </div>
-                    
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Correo electrónico</label>
-                        <input v-model="selectItem.email" type="email"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-[var(--blue-1)]">
-                    </div>
-                    
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
-                        <input v-model="selectItem.phone" type="text"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-[var(--blue-1)]">
-                    </div>
-                    
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Documento</label>
-                        <input v-model="selectItem.document" type="text"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-[var(--blue-1)]">
-                    </div>
-                    
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Estado</label>
-                        <input :value="selectItem.status" type="text" disabled
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100">
-                    </div>
-                    
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Fecha de registro</label>
-                        <input :value="formatDate(selectItem.createdAt)" type="text" disabled
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100">
-                    </div>
+                <div>
+                    <h1 class="font-semibold text-black text-lg mb-1">Apellidos</h1>
+                    <input v-model="selectItem.lastnames" type="text" 
+                        placeholder="Apellidos"
+                        class="w-full p-2 rounded-md border border-gray-300 focus:border-[var(--blue-1)] focus:outline-none" />
+                </div>
+                
+                <div>
+                    <h1 class="font-semibold text-black text-lg mb-1">Correo</h1>
+                    <input v-model="selectItem.email" type="email" 
+                        placeholder="Correo electrónico"
+                        class="w-full p-2 rounded-md border border-gray-300 focus:border-[var(--blue-1)] focus:outline-none" />
+                </div>
+                
+                <div>
+                    <h1 class="font-semibold text-black text-lg mb-1">Documento</h1>
+                    <input v-model="selectItem.document" type="text" 
+                        placeholder="Documento"
+                        class="w-full p-2 rounded-md border border-gray-300 focus:border-[var(--blue-1)] focus:outline-none" />
+                </div>
+                
+                <div>
+                    <h1 class="font-semibold text-black text-lg mb-1">Teléfono</h1>
+                    <input v-model="selectItem.phone" type="text" 
+                        placeholder="Teléfono"
+                        class="w-full p-2 rounded-md border border-gray-300 focus:border-[var(--blue-1)] focus:outline-none" />
+                </div>
+                
+                <div>
+                    <h1 class="font-semibold text-black text-lg mb-1">Estado</h1>
+                    <input :value="selectItem.status" type="text" 
+                        disabled
+                        class="w-full p-2 rounded-md border border-gray-300 bg-gray-100" />
+                </div>
+                
+                <div>
+                    <h1 class="font-semibold text-black text-lg mb-1">Fecha de registro</h1>
+                    <input :value="formatDate(selectItem.createdAt)" type="text" 
+                        disabled
+                        class="w-full p-2 rounded-md border border-gray-300 bg-gray-100" />
                 </div>
             </div>
-        </template>
+            
+            <div @click="update_item"
+                class="w-[90%] mx-auto mb-4 bg-[var(--blue-1)] rounded-2xl mt-auto cursor-pointer hover:opacity-90">
+                <h1 class="py-3 text-center text-white font-semibold">Actualizar</h1>
+            </div>
+        </div>
     </modal_Float>
 
     <!-- Contenido principal -->
-    <div class="h-screen bg-gray-100">
-        <div class="bg-white rounded-lg h-[100%]">
-            <!-- Header con título y controles -->
-            <div class="p-6 border-b">                
-                <div class="flex flex-wrap gap-4 items-center justify-between">
-                    <!-- Buscador -->
-                    <div class="flex-1 max-w-md">
-                        <input 
-                            v-model="searchTerm"
-                            type="text" 
-                            placeholder="Buscar por nombre o correo..."
-                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[var(--blue-1)]">
-                    </div>
+    <div class="w-full h-full bg-gray-100">
+        <!-- Header con título y controles -->
+        <div class="py-10 w-[90%] mx-auto flex justify-between items-center">
+            <h1>Bienvenido a Doc Visual Administrador</h1>
+            
+            <div class="flex items-center gap-4">
+                <!-- Buscador -->
+                <div class="flex items-center gap-2">
+                    <input 
+                        v-model="searchQuery"
+                        type="text" 
+                        placeholder="Buscar..."
+                        class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[var(--blue-1)]">
                     
-                    <!-- Selector de estado y botón de descarga -->
-                    <div class="flex gap-3">
-                        <select v-model="type"
-                            class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[var(--blue-1)]">
-                            <option v-for="option in statusOptions" :key="option.value" :value="option.value">
-                                {{ option.label }}
-                            </option>
-                        </select>
-                        
-                        <button @click="downloadExcel"
-                            class="flex items-center gap-2 px-4 py-2 bg-[var(--blue-1)] text-white rounded-lg hover:opacity-90"
-                            v-tooltip="'Descargar BD de pendientes'">
-                            <img :src="excelIcon" alt="excel" class="w-5 h-5" />
-                            <span>Descargar BD</span>
-                        </button>
-                    </div>
+                    <!-- Selector de estado -->
+                    <select v-model="type"
+                        class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[var(--blue-1)]">
+                        <option v-for="option in statusOptions" :key="option.value" :value="option.value">
+                            {{ option.label }}
+                        </option>
+                    </select>
+                </div>
+                
+                <!-- Botón descargar Excel -->
+                <div @click="downloadExcel" class="cursor-pointer">
+                    <img :src="excelIcon" alt="excel" class="mx-auto w-10 h-auto" />
+                    <h1 class="md:text-base text-[10px] text-center">Descargar datos</h1>
                 </div>
             </div>
+        </div>
 
-            <!-- Tabla -->
-            <div class="overflow-x-auto">
-                <table class="min-w-full bg-white">
-                    <thead class="bg-gray-50">
+        <!-- Tabla -->
+        <div class="w-[90%] mx-auto bg-white rounded-2xl shadow-gray-400 shadow-2xl" v-if="all_users">
+            <div class="min-h-[400px] w-full">
+                <table class="min-w-full bg-white shadow-md rounded-xl overflow-hidden">
+                    <thead class="bg-gray-200 text-gray-500 text-left">
                         <tr>
-                            <th class="px-2 md:px-6 py-3 text-left">Nombre</th>
-                            <th class="px-2 md:px-6 py-3 text-left">Correo</th>
-                            <th class="px-2 md:px-6 py-3 text-left">Fecha inscripción</th>
-                            <th class="px-2 md:px-6 py-3 text-left">Acciones</th>
+                            <th class="px-6 py-3">Nombre</th>
+                            <th class="px-6 py-3">Correo</th>
+                            <th class="px-6 py-3">Fecha inscripción</th>
+                            <th class="px-6 py-3">Acciones</th>
                         </tr>
                     </thead>
                     <tbody class="w-full">
-                        <tr v-for="user in filteredUsers" :key="user.id" 
-                            class="border-b hover:bg-gray-100"
+                        <tr v-for="user in all_users" :key="user.id" 
+                            class="border-b hover:bg-gray-50"
                             :class="{ 'bg-green-100': user.status === 'ACCEPTED' }">
-                            <td class="px-2 md:px-6 py-3 max-w-[20px] truncate text-ellipsis whitespace-nowrap">
+                            <td class="px-6 py-3">
                                 {{ user.names }} {{ user.lastnames }}
                             </td>
-                            <td class="px-2 md:px-6 py-3 max-w-[20px] truncate text-ellipsis whitespace-nowrap">
+                            <td class="px-6 py-3">
                                 {{ user.email }}
                             </td>
-                            <td class="px-2 md:px-6 py-3 max-w-[20px] truncate text-ellipsis whitespace-nowrap">
+                            <td class="px-6 py-3">
                                 {{ formatDate(user.createdAt) }}
                             </td>
-                            <td class="px-2 md:px-6 py-3">
+                            <td class="px-6 py-3">
                                 <div class="flex gap-2">
                                     <!-- Ver documentos -->
                                     <img :src="icondatas" alt="documents" 
@@ -310,7 +346,7 @@ const approve = async (data: userPendingsDto) => {
                     </tbody>
                 </table>
             </div>
-
+            
             <!-- Paginación -->
             <div class="flex justify-center mt-4 pb-4">
                 <paginadeComponent v-if="meta" :meta="meta" @change-page="adminProfessioanlStore.goToPage" />
