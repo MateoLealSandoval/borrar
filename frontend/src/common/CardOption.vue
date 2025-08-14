@@ -39,7 +39,7 @@ const navigate = () => {
 <style scoped>
 .card-container {
   position: relative;
-  overflow: hidden;
+  transition: all 0.3s ease;
 }
 
 .card-container::before {
@@ -56,5 +56,13 @@ const navigate = () => {
 
 .card-container:hover::before {
   opacity: 1;
+}
+
+.card-container:hover {
+    box-shadow: 
+        0 0 0 3px white,
+        0 10px 25px rgba(100, 121, 253, 0.3),
+        0 20px 40px rgba(100, 121, 253, 0.15);
+    transform: translateY(-2px);
 }
 </style>
