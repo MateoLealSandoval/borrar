@@ -134,6 +134,16 @@ async function sendContact() {
             </div>
         </div>
         
+        <div class="w-[85%] mx-auto lg:w-full ">
         <Footer />
+    </div>
+    <Footer_Color color="#f3f4f6" />
+    <div class="fixed bottom-4 right-4 w-18 h-auto    cursor-pointer  rounded-full z-30 shadow-lg  ">
+        <a href="https://wa.me/+573124967421" target="_blank"
+            class="fixed bottom-4 right-4 w-16 h-auto   cursor-pointer rounded-full z-30  ">
+            <img src="@/assets/images/logowhatsaap.webp" alt="WhatsApp" class="w-16 h-16 object-contain" />
+        </a>
+
+    </div>
     </div>
 </template>
