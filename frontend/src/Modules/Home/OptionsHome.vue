@@ -22,7 +22,7 @@ export default defineComponent({
 <template>
     <div class=" w-full  ">
         <div class="   m-auto  py-10">
-            <h1 class="w-full   text-center font-poppins font-bold text-xl md:text-4xl  md:pt-10 pb-5 md:pb-20 text-gray-500"
+            <h1 class="w-full text-center font-poppins font-bold text-xl md:text-4xl  md:pt-10 pb-5 md:pb-20" style="color:white"
                  >Selecciona por especialidad</h1>
             <div class="w-full m-auto flex flex-wrap justify-center gap-3   md:justify-between   md:gap-3    ">
 
