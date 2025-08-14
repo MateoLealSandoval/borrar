@@ -15,7 +15,7 @@ defineProps<{
         <div class="flex items-center">
             <!-- Imagen del icono PNG -->
             <div class="flex-shrink-0 mr-4">
-                <img :src="image" alt="icon" class="w-6 h-6 object-contain" />
+                <img :src="image" alt="icon" class="w-10 h-10 object-contain" />
             </div>
             
             <!-- Texto -->

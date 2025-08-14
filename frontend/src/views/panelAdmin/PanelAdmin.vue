@@ -48,7 +48,7 @@ function changePanel(option: AdminPanelOptionEnum) {
     <div class="w-screen h-screen flex flex-col">
         <!-- Header Global con Logo -->
         <div class="bg-white h-16 border-b border-gray-200 flex items-center px-6 z-50">
-            <img src="@/assets/logo.svg" alt="Doc Visual" class="h-10" />
+            <img class="w-auto h-8 md:h-10 cursor-pointer" src="/assets/LogoPng-DOLYEQEe.webp" alt="Logo" />
         </div>
 
         <div class="flex flex-1 overflow-hidden">
