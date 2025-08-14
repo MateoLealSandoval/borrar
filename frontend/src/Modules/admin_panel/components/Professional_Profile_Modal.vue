@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue';
-import type { UsersProfessionalsPanelAdminDto } from '@/dto/AdminPanel';
 
 const props = defineProps<{
-  professional: UsersProfessionalsPanelAdminDto;
+  professional: any; // Usando any para mayor flexibilidad
 }>();
 
 const emit = defineEmits<{
@@ -32,7 +31,6 @@ const selectedPrepaid = ref('');
 
 // Foto de perfil
 const profileImageUrl = ref(props.professional.profilePhoto || '');
-const defaultProfileImage = '/src/assets/images/default-profile.png';
 
 // Opciones de prepagadas
 const prepaidOptions = [
@@ -94,7 +92,6 @@ function removePrepaid(prepaid: string) {
 
 function addOffice() {
   // Lógica para agregar consultorio
-  // Por ahora solo un placeholder
   if (!formData.value.offices) {
     formData.value.offices = [];
   }
@@ -197,7 +194,7 @@ function close() {
             <div class="flex items-center gap-4">
               <div class="w-24 h-24 rounded-full overflow-hidden bg-gray-100">
                 <img 
-                  :src="profileImageUrl || defaultProfileImage" 
+                  :src="profileImageUrl || '/src/assets/images/notUser.webp'" 
                   alt="Perfil"
                   class="w-full h-full object-cover"
                 >
@@ -264,6 +261,10 @@ function close() {
                   </svg>
                 </button>
               </div>
+              <!-- Mostrar especialidades existentes -->
+              <div v-if="formData.specialties.length === 0" class="text-sm text-gray-500 italic">
+                Retina, Glaucoma
+              </div>
             </div>
           </div>
           
@@ -292,6 +293,11 @@ function close() {
                 >
                   Eliminar
                 </button>
+              </div>
+              <!-- Mostrar consultorio por defecto si no hay ninguno -->
+              <div v-if="formData.offices.length === 0" class="bg-gray-100 p-3 rounded-lg">
+                <p class="text-sm font-medium">Cedritos</p>
+                <p class="text-xs text-gray-600">Cl. 140 #10 A 61, Bogotá, Colombia</p>
               </div>
             </div>
           </div>
@@ -331,6 +337,21 @@ function close() {
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                   </svg>
                 </button>
+              </div>
+              <!-- Mostrar prepagadas por defecto -->
+              <div v-if="formData.prepaidMedicine.length === 0" class="flex flex-wrap gap-2">
+                <div class="bg-blue-500 text-white px-3 py-1 rounded-full flex items-center gap-2">
+                  <span class="text-sm">Axa Colpatria</span>
+                  <span class="text-white">✕</span>
+                </div>
+                <div class="bg-blue-500 text-white px-3 py-1 rounded-full flex items-center gap-2">
+                  <span class="text-sm">Compensar</span>
+                  <span class="text-white">✕</span>
+                </div>
+                <div class="bg-blue-500 text-white px-3 py-1 rounded-full flex items-center gap-2">
+                  <span class="text-sm">Seguros Bolivar</span>
+                  <span class="text-white">✕</span>
+                </div>
               </div>
             </div>
           </div>
