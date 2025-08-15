@@ -187,11 +187,6 @@ const goToTerms = () => {
             </div>
 
         </div>
-
-        <!-- logo Iconica…..Partner -->
-        <div class="w-full flex flex-wrap justify-center">
-            <img class="w-[21%] h-auto object-contain" src="@/assets/images/IconicaPartner.webp" />
-        </div>
         
         <!-- SECCIÓN PERSONALIZADO -->
         <div class="w-[90%] mx-auto pb-12">

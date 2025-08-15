@@ -59,7 +59,7 @@ const update_item = async () => {
             })
             Swal.fire({
                 title: "¡Éxito!",
-                text: "El paciente ha sido actualizado correctamente.",
+                text: "El usuario ha sido actualizado correctamente.",
                 icon: "success",
                 confirmButtonColor: getComputedStyle(document.documentElement).getPropertyValue('--blue-1').trim(),
                 confirmButtonText: "OK",
@@ -93,7 +93,7 @@ const update_item = async () => {
 async function deleteUser(id: string, name: string) {
     const result = await Swal.fire({
         title: "¡Alerta!",
-        text: `¿Estás seguro de borrar al paciente ${name}?`,
+        text: `¿Estás seguro de borrar al usuario ${name}?`,
         icon: "warning",
         showCancelButton: true,
         confirmButtonColor: "var(--blue-1)",
@@ -111,7 +111,7 @@ async function deleteUser(id: string, name: string) {
 
         Swal.fire({
             title: "Eliminado",
-            text: "El paciente ha sido eliminado correctamente.",
+            text: "El usuario ha sido eliminado correctamente.",
             icon: "success",
             confirmButtonColor: "var(--blue-1)"
         });

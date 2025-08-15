@@ -1,78 +1,20 @@
 <script setup lang="ts">
 import type { UsersProfessionalsPanelAdminDto } from '@/dto/AdminPanel';
 import { store_admin_professionals } from '@/store/stores_admin_panel';
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted } from 'vue';
 import Swal from 'sweetalert2';
-import axios from 'axios';
 import paginadeComponent from '@/common/paginade.component.vue';
-import modal_Float from '@/components/modal_Float.vue';
-import Professional_Profile_Modal from './components/Professional_Profile_Modal.vue';
-import Professional_Documents_Modal from './components/Professional_Documents_Modal.vue';
+import excelIcon from "@/assets/imageIcons/admin_icons/excel-icon.webp"
+import iconActions from "@/assets/imageIcons/admin_icons/icons8-editar.webp"
+import axios from 'axios';
 
-const adminProfessioanlStore = store_admin_professionals();
+const adminProfessionalStore = store_admin_professionals()
 
-// Estados
-const selectedProfessional = ref<any>(null);
-const showProfileModal = ref(false);
-const showDocumentsModal = ref(false);
-const searchTerm = ref('');
-
-// Funciones auxiliares para generar datos aleatorios únicos
-function generateRandomDocument(): string {
-  return Math.floor(10000000 + Math.random() * 90000000).toString();
-}
-
-function generateRandomPhone(): string {
-  const prefixes = ['300', '301', '302', '310', '311', '312', '313', '314', '315', '316', '317', '318', '319', '320', '321', '322', '323', '350', '351'];
-  const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
-  return `${prefix}${Math.floor(1000000 + Math.random() * 9000000)}`;
-}
-
-// Cache para datos generados (para mantener consistencia)
-const generatedData = new Map<string, { document: string; phone: string }>();
-
-function getOrGenerateData(professionalId: string) {
-  if (!generatedData.has(professionalId)) {
-    generatedData.set(professionalId, {
-      document: generateRandomDocument(),
-      phone: generateRandomPhone()
-    });
-  }
-  return generatedData.get(professionalId)!;
-}
-
-// Lifecycle
-onMounted(() => {
-  adminProfessioanlStore.get_all_users(); // Método correcto del store
-});
-
-onUnmounted(() => {
-  adminProfessioanlStore.reset();
-});
-
-// Computed
-const all_professionals = computed(() => adminProfessioanlStore.users || []);
-const meta = computed(() => adminProfessioanlStore.meta || null);
-
-const filteredProfessionals = computed(() => {
-  if (!searchTerm.value) return all_professionals.value;
-  
-  return all_professionals.value.filter(prof => {
-    const searchLower = searchTerm.value.toLowerCase();
-    return (
-      String(prof.names).toLowerCase().includes(searchLower) ||
-      String(prof.lastnames).toLowerCase().includes(searchLower) ||
-      String(prof.email).toLowerCase().includes(searchLower)
-    );
-  });
-});
-
-// Métodos
 async function updateUserRole(user: UsersProfessionalsPanelAdminDto, checked: boolean) {
-  if (user.role === 'DELETED_USER_PARTNER' && checked) {
+  if (user.role === 'DELETED_USER_PARTNER') {
     const result = await Swal.fire({
       title: "¡Alerta!",
-      text: `¿Quieres habilitar al profesional ${user.names} ${user.lastnames}?`,
+      text: `¿Quieres habilitar al usuario ${user.names} ${user.lastnames}?`,
       icon: "warning",
       showCancelButton: true,
       confirmButtonColor: "var(--blue-1)",
@@ -82,9 +24,9 @@ async function updateUserRole(user: UsersProfessionalsPanelAdminDto, checked: bo
     });
 
     if (result.isConfirmed) {
-      await adminProfessioanlStore.setState_professionals(user.id, 'USER_PARTNER');
+      await adminProfessionalStore.setState_professionals(user.id, 'USER_PARTNER');
       user.role = 'USER_PARTNER';
-      Swal.fire('¡Habilitado!', 'El profesional ha sido habilitado.', 'success');
+      await adminProfessionalStore.get_all_users(); // Refresh the list
     }
     return;
   }
@@ -92,295 +34,231 @@ async function updateUserRole(user: UsersProfessionalsPanelAdminDto, checked: bo
   if (user.role === 'USER_PARTNER' && !checked) {
     const result = await Swal.fire({
       title: "¡Alerta!",
-      text: `¿Quieres desactivar al profesional ${user.names} ${user.lastnames}?`,
+      text: `¿Quieres bloquear al usuario ${user.names} ${user.lastnames}?`,
       icon: "warning",
       showCancelButton: true,
       confirmButtonColor: "var(--blue-1)",
       cancelButtonColor: "#d33",
-      confirmButtonText: "Sí, desactivar",
+      confirmButtonText: "Sí, bloquear",
       cancelButtonText: "Cancelar"
     });
 
     if (result.isConfirmed) {
-      await adminProfessioanlStore.setState_professionals(user.id, 'DELETED_USER_PARTNER');
+      await adminProfessionalStore.setState_professionals(user.id, 'DELETED_USER_PARTNER');
       user.role = 'DELETED_USER_PARTNER';
-      Swal.fire('¡Desactivado!', 'El profesional ha sido desactivado.', 'success');
+      await adminProfessionalStore.get_all_users(); // Refresh the list
     }
     return;
   }
 }
 
-// Descargar base de datos - Implementación alternativa sin endpoint
-async function downloadDatabase() {
+async function downloadExcel() {
   try {
-    // Crear un CSV con los datos actuales de la tabla
-    const headers = ['Nombre', 'Documento', 'Celular', 'Email', 'Estado'];
-    const rows = all_professionals.value.map(prof => {
-      const data = getOrGenerateData(prof.id);
-      return [
-        `${prof.names} ${prof.lastnames}`,
-        (prof as any).document || (prof as any).cedula || data.document,
-        (prof as any).phone || (prof as any).cellphone || (prof as any).telefono || data.phone,
-        prof.email,
-        prof.role === 'USER_PARTNER' ? 'Activo' : 'Inactivo'
-      ];
+    const response = await axios.post('/auth/excel-professionals', {}, {
+      responseType: 'blob',
     });
-    
-    // Crear el contenido CSV
-    const csvContent = [
-      headers.join(','),
-      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
-    ].join('\n');
-    
-    // Crear blob y descargar
-    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const blob = new Blob([response.data], { 
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+    });
     const url = window.URL.createObjectURL(blob);
+
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', `profesionales_registrados_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('download', 'profesionales.xlsx');
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     window.URL.revokeObjectURL(url);
-    
-    Swal.fire('¡Descargado!', 'La base de datos ha sido descargada exitosamente en formato CSV.', 'success');
   } catch (error) {
-    console.error('Error al generar el archivo:', error);
-    Swal.fire('Error', 'No se pudo generar el archivo de descarga.', 'error');
+    console.error('Error al descargar el archivo:', error);
   }
 }
 
-// Ver perfil - Extender el tipo para incluir campos adicionales
-function viewProfile(professional: any) {
-  // Mapear los datos correctamente desde el objeto professional
-  selectedProfessional.value = {
-    id: professional.id,
-    names: professional.names || '',
-    lastnames: professional.lastnames || '',
-    email: professional.email || '',
-    document: professional.document || professional.cedula || '', // Buscar en diferentes campos posibles
-    phone: professional.phone || professional.cellphone || professional.telefono || '', // Buscar en diferentes campos posibles
-    experience: professional.experience || professional.years_experience || 0,
-    profilePhoto: professional.profilePhoto || professional.profile_photo || professional.photo || null,
-    specialties: professional.specialties || professional.especialidades || [],
-    offices: professional.offices || professional.consultorios || [],
-    prepaidMedicine: professional.prepaidMedicine || professional.prepaid_medicine || []
-  };
-  showProfileModal.value = true;
-}
+onMounted(() => {
+  adminProfessionalStore.get_all_users();
+});
 
-// Ver documentos
-function viewDocuments(professional: any) {
-  selectedProfessional.value = {
-    id: professional.id,
-    names: professional.names || '',
-    lastnames: professional.lastnames || '',
-    email: professional.email || '',
-    document: professional.document || professional.cedula || '',
-    phone: professional.phone || professional.cellphone || professional.telefono || ''
-  };
-  showDocumentsModal.value = true;
-}
+onUnmounted(() => {
+  adminProfessionalStore.reset();
+});
 
-// Cerrar modales
-function closeProfileModal() {
-  showProfileModal.value = false;
-  selectedProfessional.value = null;
-}
-
-function closeDocumentsModal() {
-  showDocumentsModal.value = false;
-  selectedProfessional.value = null;
-}
-
-// Guardar cambios del perfil
-async function saveProfileChanges(updatedData: any) {
-  try {
-    // Aquí iría la lógica para guardar los cambios
-    await axios.put(`/professionals/${updatedData.id}`, updatedData);
-    
-    Swal.fire('¡Guardado!', 'Los cambios han sido guardados exitosamente.', 'success');
-    closeProfileModal();
-    adminProfessioanlStore.get_all_users(); // Recargar datos
-  } catch (error) {
-    Swal.fire('Error', 'No se pudieron guardar los cambios.', 'error');
-  }
-}
-
-// Paginación
-function changePage(page: number) {
-  adminProfessioanlStore.goToPage(page); // Método correcto del store
-}
+const all_users = computed(() => adminProfessionalStore.users || null);
+const meta = computed(() => adminProfessionalStore.meta || null);
 </script>
 
 <template>
-  <div class="w-full bg-gray-50 min-h-screen">
-    <!-- Header con título y acciones -->
-    <div class="px-6 py-4">
-      <div class="flex justify-between items-center">
-        <h1 class="text-lg text-gray-700">Bienvenido a Doc Visual Administrador</h1>
-        <div class="flex gap-4 items-center">
-          <!-- Buscador -->
-          <div class="relative">
-            <input 
-              v-model="searchTerm"
-              type="text" 
-              placeholder="Buscar profesional..."
-              class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-            >
-            <svg class="absolute left-3 top-2.5 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-            </svg>
-          </div>
-          
-          <!-- Botón descargar BD -->
-          <button 
-            @click="downloadDatabase"
-            class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
-          >
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
-            </svg>
-            Descargar BD
-          </button>
-        </div>
+  <div class="w-full bg-gray-100 min-h-full">
+    <!-- Header -->
+    <div class="bg-white border-b border-gray-200">
+      <div class="w-[90%] mx-auto py-6">
+        <h1 class="text-2xl font-semibold text-gray-800">Bienvenido a Doc Visual Administrador</h1>
       </div>
     </div>
 
-    <!-- Tabla -->
-    <div class="p-6">
-      <div class="bg-white rounded-lg shadow-sm overflow-hidden">
-        <table class="min-w-full">
-          <thead class="bg-gray-50 border-b border-gray-200">
-            <tr>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Nombre
-              </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Documento
-              </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Celular
-              </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Email
-              </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Status
-              </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Acción
-              </th>
-            </tr>
-          </thead>
-          <tbody class="bg-white divide-y divide-gray-200">
-            <tr v-for="professional in filteredProfessionals" :key="professional.id" class="hover:bg-gray-50">
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                {{ professional.names }} {{ professional.lastnames }}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                <!-- Mostrar el documento real o generar uno único para cada profesional -->
-                {{ 
-                  (professional as any).document || 
-                  (professional as any).cedula || 
-                  getOrGenerateData(professional.id).document 
-                }}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                <!-- Mostrar el teléfono real o generar uno único para cada profesional -->
-                {{ 
-                  (professional as any).phone || 
-                  (professional as any).cellphone || 
-                  (professional as any).telefono || 
-                  getOrGenerateData(professional.id).phone 
-                }}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                {{ professional.email }}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <!-- Toggle Status -->
-                <label class="relative inline-flex items-center cursor-pointer">
-                  <input 
-                    type="checkbox" 
-                    class="sr-only peer" 
-                    :checked="professional.role === 'USER_PARTNER'"
-                    @click.prevent="updateUserRole(professional, professional.role !== 'USER_PARTNER')"
-                  >
-                  <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                </label>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm">
-                <div class="flex gap-2">
-                  <!-- Botón Ver/Editar Perfil -->
-                  <button 
-                    @click="viewProfile(professional)"
-                    class="p-2 bg-blue-100 hover:bg-blue-200 rounded-lg transition-colors group"
-                    title="Ver/Editar Perfil"
-                  >
-                    <svg class="w-5 h-5 text-blue-600 group-hover:text-blue-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                    </svg>
-                  </button>
-                  
-                  <!-- Botón Ver Documentos -->
-                  <button 
-                    @click="viewDocuments(professional)"
-                    class="p-2 bg-green-100 hover:bg-green-200 rounded-lg transition-colors group"
-                    title="Ver Documentos"
-                  >
-                    <svg class="w-5 h-5 text-green-600 group-hover:text-green-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                    </svg>
-                  </button>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+    <!-- Main Content -->
+    <div class="w-[90%] mx-auto py-6">
+      <!-- Header with download button -->
+      <div class="flex justify-between items-center mb-6">
+        <h2 class="text-xl font-medium text-gray-700">Profesionales Registrados</h2>
+        <button @click="downloadExcel" 
+          class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors duration-200">
+          <img :src="excelIcon" alt="Excel" class="w-4 h-4 mr-2">
+          Descargar BD
+        </button>
+      </div>
+
+      <!-- Table Container -->
+      <div v-if="all_users && all_users.length > 0" 
+        class="bg-white rounded-2xl shadow-lg overflow-hidden">
         
-        <!-- Mensaje si no hay datos -->
-        <div v-if="filteredProfessionals.length === 0" class="text-center py-8 text-gray-500">
-          No se encontraron profesionales registrados
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="px-6 py-4 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">
+                  Nombre
+                </th>
+                <th class="px-6 py-4 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">
+                  Documento
+                </th>
+                <th class="px-6 py-4 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">
+                  Celular
+                </th>
+                <th class="px-6 py-4 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">
+                  Email
+                </th>
+                <th class="px-6 py-4 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">
+                  Status
+                </th>
+                <th class="px-6 py-4 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">
+                  Rating
+                </th>
+              </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+              <tr v-for="(user, index) in all_users" 
+                :key="user.id" 
+                class="hover:bg-gray-50 transition-colors duration-150">
+                
+                <!-- Nombre -->
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                  {{ user.names + " " + user.lastnames }}
+                </td>
+                
+                <!-- Documento -->
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                  {{ user.document || 'N/A' }}
+                </td>
+                
+                <!-- Celular -->
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                  {{ user.phone || 'N/A' }}
+                </td>
+                
+                <!-- Email -->
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                  {{ user.email }}
+                </td>
+                
+                <!-- Status Toggle -->
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <label class="relative inline-flex items-center cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      class="sr-only peer" 
+                      :checked="user.role === 'USER_PARTNER'"
+                      @click.prevent="updateUserRole(user, !(user.role === 'USER_PARTNER'))" 
+                    />
+                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600">
+                    </div>
+                  </label>
+                </td>
+                
+                <!-- Rating -->
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <div class="flex items-center space-x-1">
+                    <svg v-for="i in 5" :key="i" 
+                      class="w-4 h-4" 
+                      :class="i <= (user.rating || 0) ? 'text-yellow-400 fill-current' : 'text-gray-300 fill-current'" 
+                      viewBox="0 0 20 20">
+                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                    </svg>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
-      
-      <!-- Paginación -->
-      <div v-if="meta" class="mt-4 flex justify-center">
-        <paginadeComponent 
-          :meta="meta"
-          @onChange-page="changePage"
-        />
+
+      <!-- Empty State -->
+      <div v-else class="bg-white rounded-2xl shadow-lg p-12 text-center">
+        <div class="text-gray-400 mb-4">
+          <svg class="mx-auto h-16 w-16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" 
+              d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+          </svg>
+        </div>
+        <h3 class="text-lg font-medium text-gray-900 mb-2">No hay profesionales registrados</h3>
+        <p class="text-gray-500">Los profesionales registrados aparecerán aquí.</p>
+      </div>
+
+      <!-- Pagination -->
+      <div v-if="meta && all_users && all_users.length > 0" class="flex justify-center mt-6">
+        <paginadeComponent :meta="meta" @change-page="adminProfessionalStore.goToPage" />
+      </div>
+
+      <!-- Note -->
+      <div class="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <p class="text-sm text-blue-700">
+          <strong>Nota:</strong> Se debe poder editar, eliminar, activar y desactivar
+        </p>
       </div>
     </div>
-
-    <!-- Modal de Perfil -->
-    <modal_Float 
-      v-if="showProfileModal && selectedProfessional" 
-      :model-value="showProfileModal"
-      :width-percent="80"
-      :height-percent="90"
-      @click-outside="closeProfileModal"
-    >
-      <Professional_Profile_Modal 
-        :professional="selectedProfessional"
-        @close="closeProfileModal"
-        @save="saveProfileChanges"
-      />
-    </modal_Float>
-
-    <!-- Modal de Documentos -->
-    <modal_Float 
-      v-if="showDocumentsModal && selectedProfessional" 
-      :model-value="showDocumentsModal"
-      :width-percent="70"
-      :height-percent="80"
-      @click-outside="closeDocumentsModal"
-    >
-      <Professional_Documents_Modal 
-        :professional="selectedProfessional"
-        @close="closeDocumentsModal"
-      />
-    </modal_Float>
   </div>
 </template>
+
+<style scoped>
+/* Custom animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Toggle Switch Styling */
+.peer:checked + div {
+  background-color: #3b82f6;
+}
+
+.peer:checked + div:after {
+  transform: translateX(100%);
+  border-color: white;
+}
+
+/* Table row hover effect */
+tbody tr:hover {
+  background-color: #f9fafb;
+}
+
+/* Responsive table */
+@media (max-width: 768px) {
+  .overflow-x-auto {
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  th, td {
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+  }
+}
+</style>

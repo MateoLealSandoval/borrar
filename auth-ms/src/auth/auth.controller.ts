@@ -74,7 +74,7 @@ export class AuthController {
 
     return this.authService.getAllUsersPartners(PaginationDto);
   }
-  @MessagePattern('auth-ms.get.all.user.pagination.admin')
+  @MessagePattern('auth-ms.get.all.users.pagination.admin')
   get_all_user_pagination_admin(@Payload() PaginationDto: PaginationDto) {
     return this.authService.getAllUsers(PaginationDto)
   }
@@ -86,5 +86,10 @@ export class AuthController {
   @MessagePattern('auth-ms.set.status.user.admin')
   set_status_user_admin(@Payload() setStatusUserDto: setStatusUserDto) {
     return this.authService.setStatusUser(setStatusUserDto)
+  }
+
+  @MessagePattern('auth-ms.patch.names.user')
+  patchNamesUser(@Payload() data: any) {
+    return this.authService.patchNamesUser(data);
   }
 }

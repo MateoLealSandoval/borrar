@@ -530,11 +530,11 @@ export class AuthService extends PrismaClient implements OnModuleInit {
     }
     async getAllUsersPartners(PaginationDto: PaginationDto) {
         try {
-
             const { page, limit } = PaginationDto;
             const currentPage = page ?? 1;
             const perPage = limit ?? 10;
             const rolesToFilter = [Role.USER_PARTNER, Role.DELETED_USER_PARTNER];
+            
             const total = await this.user.count({
                 where: {
                     role: {
@@ -543,55 +543,8 @@ export class AuthService extends PrismaClient implements OnModuleInit {
                 }
             });
 
-            const result = await this.user.findMany({
-                skip: (currentPage - 1) * perPage,
-                take: perPage,
-                where: {
-                    role: {
-                        in: rolesToFilter,
-                    }
-                },
-                select: {
-                    id: true,
-                    email: true,
-                    names: true,
-                    lastnames: true,
-                    role: true,
-                },
-            });
-            return {
-                status: 200,
-                data: result,
-                meta: {
-                    total,
-                    page: currentPage,
-                    lastPage: Math.ceil(total / perPage)
-                }
-            };
-        } catch (error) {
-            throw new RpcException({
-                status: 500,
-                message: 'Error interno al obtener los usuarios',
-            });
-        }
-    }
-
-    async getAllUsers(PaginationDto: PaginationDto) {
-        try {
-
-            const { page, limit } = PaginationDto;
-            const currentPage = page ?? 1;
-            const perPage = limit ?? 10;
-            const rolesToFilter = [Role.USER, Role.DELETED_USER];
-            const total = await this.user.count({
-                where: {
-                    role: {
-                        in: rolesToFilter,
-                    }
-                }
-            });
-
-            const result = await this.user.findMany({
+            // Obtener usuarios básicos
+            const users = await this.user.findMany({
                 skip: (currentPage - 1) * perPage,
                 take: perPage,
                 where: {
@@ -605,11 +558,42 @@ export class AuthService extends PrismaClient implements OnModuleInit {
                     names: true,
                     lastnames: true,
                     role: true
-                },
+                }
             });
+
+            // Obtener datos adicionales de cada partner del microservicio partner-ms
+            const usersWithPartnerData = await Promise.all(
+                users.map(async (user) => {
+                    try {
+                        // Llamar al microservicio partner-ms para obtener datos adicionales
+                        const partnerData = await firstValueFrom(
+                            this.client.send('get.partner.detail.user', { id: user.id })
+                        );
+                        
+                        return {
+                            ...user,
+                            document: partnerData?.data?.document || 'N/A',
+                            phone: partnerData?.data?.phone || 'N/A',
+                            title: partnerData?.data?.title || 'N/A',
+                            rating: 5 // Rating fijo por ahora
+                        };
+                    } catch (error) {
+                        // Si no hay datos de partner, devolver valores por defecto
+                        console.warn(`No se encontraron datos de partner para el usuario ${user.id}`);
+                        return {
+                            ...user,
+                            document: 'N/A',
+                            phone: 'N/A',
+                            title: 'N/A',
+                            rating: 5
+                        };
+                    }
+                })
+            );
+
             return {
                 status: 200,
-                data: result,
+                data: usersWithPartnerData,
                 meta: {
                     total,
                     page: currentPage,
@@ -619,7 +603,90 @@ export class AuthService extends PrismaClient implements OnModuleInit {
         } catch (error) {
             throw new RpcException({
                 status: 500,
-                message: 'Error interno al obtener los usuarios',
+                message: 'Error interno al obtener los usuarios partners',
+            });
+        }
+    }
+
+    async getAllUsers(PaginationDto: PaginationDto) {
+        try {
+            const { page, limit } = PaginationDto;
+            const currentPage = page ?? 1;
+            const perPage = limit ?? 10;
+            const rolesToFilter = [Role.USER, Role.DELETED_USER];
+            
+            const total = await this.user.count({
+            where: {
+                role: {
+                in: rolesToFilter,
+                }
+            }
+            });
+
+            // Obtener usuarios básicos
+            const users = await this.user.findMany({
+            skip: (currentPage - 1) * perPage,
+            take: perPage,
+            where: {
+                role: {
+                in: rolesToFilter,
+                }
+            },
+            select: {
+                id: true,
+                email: true,
+                names: true,
+                lastnames: true,
+                role: true
+            },
+            });
+
+            // Obtener datos adicionales de UserData para cada usuario
+            const usersWithData = await Promise.all(
+            users.map(async (user) => {
+                try {
+                // Llamar al microservicio user-ms para obtener datos adicionales
+                const userData = await firstValueFrom(
+                    this.client.send('user-ms.get.user.data', { userId: user.id })
+                );
+                
+                return {
+                    ...user,
+                    phone: userData?.data?.phone || null,
+                    contactPhone: userData?.data?.contactPhone || null,
+                    city: userData?.data?.city || null,
+                    birthDay: userData?.data?.birthDay || null,
+                    birthMonth: userData?.data?.birthMonth || null,
+                    birthYear: userData?.data?.birthYear || null,
+                };
+                } catch (error) {
+                // Si no hay datos en UserData, devolver solo los datos básicos
+                return {
+                    ...user,
+                    phone: null,
+                    contactPhone: null,
+                    city: null,
+                    birthDay: null,
+                    birthMonth: null,
+                    birthYear: null,
+                };
+                }
+            })
+            );
+
+            return {
+            status: 200,
+            data: usersWithData,
+            meta: {
+                total,
+                page: currentPage,
+                lastPage: Math.ceil(total / perPage)
+            }
+            };
+        } catch (error) {
+            throw new RpcException({
+            status: 500,
+            message: 'Error interno al obtener los usuarios',
             });
         }
     }
@@ -705,6 +772,48 @@ export class AuthService extends PrismaClient implements OnModuleInit {
             throw new RpcException({
                 status: 500,
                 message: 'Error al establecer el estado del usuario',
+            });
+        }
+    }
+
+    async patchNamesUser(data: any) {
+        try {
+            const { names, lastnames, id } = data;
+            
+            const user = await this.user.findFirst({
+            where: { id: id },
+            });
+            
+            if (!user) {
+            throw new RpcException({
+                status: 404,
+                message: 'Usuario no encontrado'
+            });
+            }
+
+            const updatedUser = await this.user.update({
+            where: { id: id },
+            data: {
+                names: names || user.names,
+                lastnames: lastnames || user.lastnames,
+            },
+            select: {
+                id: true,
+                email: true,
+                names: true,
+                lastnames: true,
+                role: true,
+            }
+            });
+
+            return {
+            status: 200,
+            data: updatedUser
+            };
+        } catch (error) {
+            throw new RpcException({
+            status: 500,
+            message: 'Error al actualizar nombres del usuario',
             });
         }
     }

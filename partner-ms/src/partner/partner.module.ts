@@ -11,9 +11,27 @@ import { PartnerServicesController } from './controllers/partner.services.contro
 import { PartnerServiceServices } from './services';
 import { PartnerServicePrepagadas } from './services/partner.prepagadas.service';
 import { PartnerControllerPrepagadas } from './controllers/partner.prepagadas.controller';
+import { PartnerPaymentService } from './services/partner.payment.service';
+import { PartnerPaymentController } from './controllers/partner.payment.controller';
+
 @Module({
-  imports:[NatsModule],
-  controllers: [PartnerController,PartnerControllerSpecialits,PartnerControllerOffice,PartnerPhotosController,PartnerServicesController, PartnerControllerPrepagadas],
-  providers: [PartnerService,PartnerServiceSpecialist,PartnerServiceOffices,PartnerServiceServices,PartnerServicePrepagadas ],
+  imports: [NatsModule],
+  controllers: [
+    PartnerController,
+    PartnerControllerSpecialits,
+    PartnerControllerOffice,
+    PartnerPhotosController,
+    PartnerServicesController,
+    PartnerControllerPrepagadas,
+    PartnerPaymentController
+  ],
+  providers: [
+    PartnerService,
+    PartnerServiceSpecialist,
+    PartnerServiceOffices,
+    PartnerServiceServices,
+    PartnerServicePrepagadas,
+    PartnerPaymentService
+  ],
 })
 export class PartnerModule {}

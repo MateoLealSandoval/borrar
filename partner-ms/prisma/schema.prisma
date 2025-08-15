@@ -18,6 +18,20 @@ enum TypePayment {
   prepaid
 }
 
+// Enums para sistema de pagos
+enum PaymentStatus {
+  PENDING
+  PAID
+  EXPIRED
+  CANCELLED
+}
+
+enum PlanType {
+  BASIC
+  PREMIUM
+  ENTERPRISE
+}
+
 //.data partner
 model UserDataPartner {
   id              String            @id @unique
@@ -41,6 +55,15 @@ model UserDataPartner {
   type_of_payment TypePayment?
   services        ServicesPartner[]
   experience      Int               @default(0)
+  
+  // Campos para sistema de pagos de especialistas
+  payment_status   PaymentStatus? // Estado del pago
+  plan_type        PlanType? // Tipo de plan
+  payment_date     DateTime? // Fecha de pago
+  expiration_date  DateTime? // Fecha de expiración
+  
+  // Relación con transacciones de pago
+  paymentTransactions PaymentTransaction[]
 }
 
 model OfficesParnet {
@@ -107,10 +130,27 @@ model ServicesPartner {
   serviceNameId   String?
 }
 
- 
-
 model serviceName {
   id       String            @id @default(uuid())
   name     ServiceName       @unique()
   services ServicesPartner[]
+}
+
+// Nueva tabla para transacciones de pago
+model PaymentTransaction {
+  id              String        @id @default(uuid())
+  partnerId       String
+  amount          Float
+  currency        String        @default("COP")
+  transactionId   String        @unique
+  paymentMethod   String
+  status          PaymentStatus @default(PENDING)
+  planType        PlanType
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  expirationDate  DateTime
+  metadata        Json?         // Para almacenar datos adicionales del proveedor de pagos
+  
+  // Relación con partner
+  partner         UserDataPartner @relation(fields: [partnerId], references: [id])
 }
