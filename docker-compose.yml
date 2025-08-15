@@ -127,13 +127,15 @@ services:
         BASE_URL: "/"
     volumes:
       - ./frontend/src:/usr/src/app/src
+      # Montar los archivos subidos en el contenedor del frontend para servir estáticos
+      - ./uploads:/usr/share/nginx/html/uploads:ro
       
 
     ports:
       - "8080:80"
     environment:
       - VITE_GOOGLE_MAPS_API_KEY= "AIzaSyC8nT7qj-zeSinnptAAHaqDrqnxitAOPAU"
-      - VITE_BASE_URL="/"
+      - VITE_BASE_URL=/
       - HOST=0.0.0.0
       - CHOKIDAR_USEPOLLING=true
      
